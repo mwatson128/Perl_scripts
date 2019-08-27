@@ -1,0 +1,267 @@
+#!/usr/bin/perl
+#
+# sfpull.pl - This script will pull messages off a CHN's type B queue,
+# store it on the filesystem and email it to someone you name in the
+# -e argument. The default email is pedpg@pegs.com
+#
+#  Usage: sfpull -c <CHN> -e <email@address.com> 
+#    -c <CHN> -e <email@address.com> 
+#    -e <email@address.com> default is pedpg@pegs.com
+#    -v verbose, don't purge just copy and print 
+# 
+# (]$[) %M%:%I% | CDATE=%G% %U%
+
+
+use Getopt::Std;
+use Time::Local;
+use integer;
+
+Getopt::Std::getopts('c:ve:');
+
+$zone = `uname -n`;
+chomp $zone;
+
+# Source the environment file
+open $conf, "< ~/.environment";
+while (<$conf>) {
+  next if /^[\#\$]/;
+  my @values = split (/=/, $_) or next;
+  chomp ($ENV{$values[0]} = $values[1]);
+}
+close $conf;
+
+# Using the LOGNAME env variable determine which TPE we are on.
+if ($ENV{LOGNAME} =~ /^usw$|^prod_sup$/) {
+  $fldirs = "/uswprod01/prod/QPURGE";
+  $ENV{'TZ'} = 'GMT0';
+  $sform = "/uswprod01/prod/scripts/sf_format";
+  $cvr = "/uswprod01/prod/home/bin/cover";
+  $qpur = "/uswprod01/prod/home/bin/qpurge";
+  $uue = "/usr/bin/uuencode";
+  $mx = "/usr/bin/mailx";
+  $u2d = "/usr/bin/unix2dos";
+  $sfc = "";
+  $sfchk = "";
+}
+elsif ($ENV{LOGNAME} eq "qa") {
+  $fldirs = "/uswqa01/qa/QPURGE";
+  $ENV{'TZ'} = 'GMT0';
+  $sform = "/home/qa/bin/sf_format";
+  $cvr = "/home/qa/bin/cover";
+  $qpur = "/uswqa01/uat/bin/qpurge";
+  $uue = "/bin/uuencode";
+  $mx = "/bin/mailx";
+  $u2d = "/bin/unix2dos";
+  $sfc = "";
+  $sfchk = "";
+}
+elsif ($ENV{LOGNAME} eq "uat") {
+  $fldirs = "/uswuat01/uat/QPURGE";
+  $ENV{'TZ'} = 'GMT0';
+  $sform = "/home/uat/bin/sf_format";
+  $cvr = "/home/uat/bin/cover";
+  $qpur = "/uswuat01/uat/bin/qpurge";
+  $uue = "/bin/uuencode";
+  $mx = "/bin/mailx";
+  $u2d = "/bin/unix2dos";
+  $sfc = "/uswuat01/knet/knet2.2.6/runtime/bin/sfcon";
+  $sfchk = "/uswuat01/uat/bin/sfcheck";
+}
+
+if ($opt_c) {
+  # Use the chain in opt_c or exit with usage.
+  $chain_code = $opt_c;
+  $uc_chn = uc $opt_c;
+  $lc_chn = lc $opt_c;
+}
+else {
+  print "Usage: sfpull -c <CHN> -e <email@address.com> \n";
+  print " -c <CHN> -e <email@address.com> \n";
+  print " -e <email@address.com> default is pedpg@pegs.com \n";
+  print " -v verbose, don't purge just copy and print \n";
+  die "required argument missing.\n";
+}
+
+if ($opt_e) {
+  $emails =  "mike.watson\@pegs.com $opt_e";
+  #$emails =  "pedpg\@pegs.com $opt_e";
+}
+else {
+  $emails = "mike.watson\@pegs.com";
+  #$emails = "pedpg\@pegs.com";
+}
+ 
+$chn_ksf = $uc_chn . "-KSF";
+
+$unix_now = time();
+@now = gmtime($unix_now);
+# Get right 4 digit year
+$yy = $now[5] + 1900;
+$YY = $now[5] % 100;
+$ct = sprintf "%02d/%02d/%02d %02d:%02d:%02d", $now[4]+1, $now[3],
+               $YY, $now[2], $now[1], $now[0];
+$subj = "$uc_chn type B queue at $ct";
+$fldtime = sprintf "%04d-%02d-%02d", $yy, $now[4]+1, $now[3];
+$md_hm = sprintf "%02d_%02d_%02d_%02d", $now[4]+1, $now[3], $now[2],  $now[1];
+$orgfn = sprintf "%s_%s.org", $lc_chn, $md_hm;
+$emlfn = sprintf "%s_%s.txt", $lc_chn, $md_hm;
+$tmpfn = sprintf "%s_%s.tmp", $lc_chn, $md_hm;
+$dosfn = sprintf "%s_%s_dos.txt", $lc_chn, $md_hm;
+
+%ksfstats = stats($chn_ksf);
+if ( $ksfstats{"Unsent"} || ($ksfstats{"Pending delivery"} &&
+     $ksfstats{"Possible duplicates on file"})) {
+
+  $msg_cnt = $ksfstats{"Unsent"} + $ksfstats{"Pending delivery"};
+  $address = msg_address($uc_chn);
+  chomp($address);
+  @oldest_msg = queue_read($uc_chn, $address);
+  $format_ts = return_time(@oldest_msg);
+  chomp $format_ts;
+
+  print "There are $msg_cnt messages on the $uc_chn queue at this time.\n";
+  
+  #make_path('${fldirs}${uc_chn}/$fldtime'); 
+  chdir($fldirs);
+  mkdir $uc_chn;
+  chdir $uc_chn;
+  mkdir $fldtime; 
+  chdir $fldtime;
+
+  # Use sf_format to pull messages off
+  qx($sform $lc_chn $format_ts > $orgfn);
+
+  # Use cover to X out the credit card numbers.
+  qx($cvr < $orgfn > $tmpfn);
+
+  # Remove the "store -w " part in front.
+  open IFP, "<$tmpfn";
+  open OFP, ">$emlfn";
+  while (<IFP>) {
+    if ($_ =~ /^store -w/) {
+      ($store, $rest) = split /RTENV/;
+      $ln = "RTENV" . $rest; 
+    }
+    else {
+      $ln = $_;
+    }
+    printf OFP $ln;
+  }
+  close IFP;  
+  close OFP;
+
+  # Make a dos copy of the file.
+  #qx($u2d $emlfn 2>/dev/null > $dosfn);
+  qx($u2d $emlfn 2>>/tmp/out1 > $dosfn);
+
+  # If the -v option is present just print the queue.
+  if ($opt_v) {
+    print "  Caught -v, just printing messages, no email or qpurge\n";
+    open IFP, "<$orgfn";
+    while (<IFP>) {
+      print $_;
+    }
+    close IFP;  
+  }
+  else {
+    print "  Pulling them off, purging queue and emailing messages.\n";
+    # Use qpurge to remove all of the messages in the queue.
+    qx($qpur $uc_chn);
+
+    # Email the messages to someone.
+    qx($uue $dosfn $dosfn | $mx -s "$subj" $emails);
+  }
+  qx(rm $emlfn);
+  qx(rm $tmpfn);
+  qx(rm $dosfn);
+}
+else {
+  print "There are NO messages on the $uc_chn queue at this time.\n";
+}
+
+exit 0;
+
+sub stats {
+  &shorten_sfconname;
+  $input = "stats\nq\n";
+  @out = call_sfcon();
+
+  if ($?)  {    # if "Child Error" from sfcon
+    $all = "File length:0:Message limit:0:Sector size:0:Pending delivery:";
+    $all .= "0:Possible duplicates on file:0:Unsent:0:Valid:1";
+  }
+  else {
+    chomp(@out);
+    $all = join (":", @out) . "Valid:1";
+    $all =~ s/:\s+/:/g;         # replace ": " with : only.
+    $all =~ s/[*] //g;          # replace "* " with nothing.
+  }
+  split(":", $all);
+}
+
+sub shorten_sfconname {
+  $queue_name = $_[0];
+  $queue_name =~ s{" }{}g; #"
+  if ( -1 == index($queue_name, "-KSF")) {
+    $queue_name =~ s{-ksf}{};
+  }
+}
+
+sub call_sfcon {
+    print " input =  $input  sfc = $sfc -p SFCON3 $queue_name \n";
+    #@out = `echo "$input" | $sfc -p SFCON3 $queue_name 2> /dev/null`;
+    @out = `echo "$input" | $sfc -p SFCON3 $queue_name 2>> /tmp/out1`;
+}
+
+sub msg_address {
+  &shorten_sfcheckname;
+  $input = "rdleof\nq\n";
+  @out = call_sfcheck();
+  @cur_eof = grep(/Current EOF for writing:/, @out);
+  @cur_words = split(/ /, $cur_eof[0]);
+  $cur_count = @cur_words;
+  $cur_words[$cur_count - 1];
+}
+
+sub shorten_sfcheckname {
+  $queue_name = $_[0];
+  $queue_name =~ tr{A-Z}{a-z};  # shift to lower case
+  $queue_name =~ s{-ksf}{};
+  $queue_name =~ s{" }{}g;      # "
+}
+
+sub call_sfcheck {
+    #@out = `echo "$input" | $sfchk $queue_name 2> /dev/null`;
+    @out = `echo "$input" | $sfchk $queue_name 2>> /tmp/out1`;
+}
+
+sub queue_read {
+  &shorten_sfcheckname;
+  $input = "sread $_[1]\nq\n";
+  @out = call_sfcheck();
+}
+
+sub return_time {
+  $tme_fnd = grep(/time stamp/, @_);
+  if ($tme_fnd > 0) {
+    @tme_fnd = grep(/time stamp/, @_);
+    @tme_tmp = split(/ /, $tme_fnd[0]);
+    $tme_cnt = @tme_tmp;
+    
+    # Split mm/dd/yy part of the date
+    @tme_dmy = split("/", $tme_tmp[$tme_cnt - 2]);
+
+    # Split hh:mm:ss part of the date
+    @tme_hms = split(":", $tme_tmp[$tme_cnt - 1]);
+
+    # Put back together without punctuation for sf_format
+    $tmp_ts = $tme_dmy[0] . $tme_dmy[1] . $tme_dmy[2];
+    $tmp_ts .= $tme_hms[0] . $tme_hms[1] . $tme_hms[2];
+    
+    return $tmp_ts;
+  }
+  else {
+    return -1;
+  }
+}
+

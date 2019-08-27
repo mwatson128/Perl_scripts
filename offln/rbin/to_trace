@@ -1,0 +1,10 @@
+:
+
+CHN=${1};
+DAY=${2};
+
+`timeout_trace.pl -c $CHN -d $DAY `;
+
+
+
+

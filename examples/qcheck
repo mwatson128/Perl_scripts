@@ -1,0 +1,153 @@
+#!/usr/local/bin/perl 
+#
+# File: qcheck  Home: /usw/src/scripts/ops/
+# This script check a list of KSF queues and reports on the number of
+# messages, and time in queue of messages.
+#
+# (]$[) qcheck:2.7 | CDATE=04/29/07 21:01:45
+
+require "timelocal.pl";
+use integer;
+
+# Get user ID and hostname to determine environment
+$id = `/usr/bin/id`;
+$id =~ /uid.*\((.*)\) gid/;
+$username = $1;
+$hostname = `/usr/bin/uname -n`;
+chomp $hostname;
+
+chdir "/$hostname/perf/qdata";
+
+# Set root logging directory based on login and system name
+if ($username eq "usw") {
+  $LNS = "/$hostname/prod/config/lns.cfg";
+}
+else {
+  $LNS = "/$hostname/uat/config/lns.cfg";
+}
+
+# Open up output file.
+$DATE = `date '+%y%m%d'`;
+chomp($DATE);
+open OFP, ">>QCHECK." . $DATE or die "Unable to open QCHECK.$DATE file.";
+
+# Read in KSF queue names from lns.cfg
+open(LNS, $LNS) or die "Can't open lns.cfg file.";
+
+$unix_now = time();
+@now = gmtime($unix_now);
+# Make sure the year is only 2 digits
+$now[5] = $now[5] % 100;
+
+while (<LNS>) {
+  if (-1 == index($_, "local_name")) {	# looking for KSF names.
+    next;
+  }
+  @ksf_parts = split(/=/, $_);		# boiling down KSF names.
+  $ksf_parts[1] =~ s/\s+|"//g;		# replace " with spaces.
+  %ksfstats = stats($ksf_parts[1]);
+  if ( $ksfstats{"Unsent"} || ($ksfstats{"Pending delivery"} &&
+       $ksfstats{"Possible duplicates on file"})) {
+    $address = msg_address($ksf_parts[1]);
+    chomp($address);
+    @oldest_msg = &queue_read($ksf_parts[1], $address);
+    $msg_age = &return_time(@oldest_msg);
+    if ($msg_age > 0) {
+      $days = ($unix_now - $msg_age) / (3600 * 24);
+      $hours = (($unix_now - $msg_age) % (3600 * 24)) / 3600;
+      $mins = (($unix_now - $msg_age) % 3600) / 60;
+    }
+    else {
+      $days = 0;
+      $hours = 0;
+      $mins = 0; 
+    }
+  }
+  else {
+    $days = 0;
+    $hours = 0;
+    $mins = 0;
+  }
+  printf OFP "%s|%02d/%02d/%02d %02d:%02d:%02d|%d|%d|%d|%d|%d|%d|%d\n",
+              $ksf_parts[1], $now[4]+1, $now[3], $now[5], $now[2], $now[1], 
+	      $now[0], $ksfstats{"Valid"}, $ksfstats{"Pending delivery"}, 
+	      $ksfstats{"Possible duplicates on file"}, $ksfstats{"Unsent"}, 
+	      $days, $hours, $mins;
+}
+
+exit 0;
+
+sub stats {
+  &shorten_sfconname;
+  $input = "stats\nq\n";
+  @out = call_sfcon();
+  
+  if ($?)  { 	# if "Child Error" from sfcon
+    $all = "File length:0:Message limit:0:Sector size:0:Pending delivery:"; 
+    $all .= "0:Possible duplicates on file:0:Unsent:0:Valid:1";
+  }
+  else {
+    chomp(@out);
+    $all = join (":", @out) . "Valid:1";
+    $all =~ s/:\s+/:/g;		# replace ": " with : only.
+    $all =~ s/[*] //g;		# replace "* " with nothing.
+  }
+  split(":", $all);
+}
+
+sub shorten_sfconname {
+  $queue_name = $_[0];
+  $queue_name =~ s{" }{}g; #"
+  if ( -1 == index($queue_name, "-KSF")) {
+    $queue_name =~ s{-ksf}{};
+  }
+}
+
+sub call_sfcon {
+  @out = `echo "$input" | sfcon -p SFCON3 $queue_name 2> /dev/null`;
+}
+
+sub msg_address {
+  &shorten_sfcheckname;
+  $input = "rdleof\nq\n";
+  @out = call_sfcheck();
+  @cur_eof = grep(/Current EOF for writing:/, @out);
+  @cur_words = split(/ /, $cur_eof[0]);
+  $cur_count = @cur_words;
+  $cur_words[$cur_count - 1];
+}
+
+sub shorten_sfcheckname {
+  $queue_name = $_[0];
+  $queue_name =~ tr{A-Z}{a-z};	# shift to lower case
+  $queue_name =~ s{-ksf}{};
+  $queue_name =~ s{" }{}g; 	# "
+}
+
+sub call_sfcheck {
+  @out = `echo "$input" | sfcheck $queue_name 2> /dev/null`;
+}
+
+sub queue_read {
+  &shorten_sfcheckname;
+  $input = "sread $_[1]\nq\n";
+  @out = call_sfcheck();
+}
+
+sub return_time {
+  $tme_fnd = grep(/time stamp/, @_);
+  if ($tme_fnd > 0) {
+    @tme_fnd = grep(/time stamp/, @_);
+    @tme_tmp = split(/ /, $tme_fnd[0]);
+    $tme_cnt = @tme_tmp;
+    $tme_tmp2 = join(":", $tme_tmp[$tme_cnt - 2], 
+                     $tme_tmp[$tme_cnt - 1]);
+    @tme_tmp3 = split("/|:", $tme_tmp2);
+    timegm($tme_tmp3[5], $tme_tmp3[4], $tme_tmp3[3], $tme_tmp3[1],
+           int($tme_tmp3[0]) - 1, $tme_tmp3[2]);
+  }
+  else {
+    return -1;
+  }
+}
+

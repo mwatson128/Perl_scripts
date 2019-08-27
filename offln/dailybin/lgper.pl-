@@ -1,0 +1,975 @@
+#!/bin/perl
+#*TITLE - lgper.pl - Perl script to run daily offline processes - 1.16
+#*SUBTTL Preface, and environment 
+#
+#  (]$[) %M%:%I% | CDATE=%U% %G%
+#
+#
+#	Copyright (C) 1996 THISCO, Inc.
+#	      All Rights Reserved
+#
+#
+
+# internal global variables
+($lgpersum_file, @lgpersum_file, @lgper_file, @lgper_missing);
+($lgper_dir, $arcdir_per);
+
+#*SUBTTL lgper_init - initialize variables for LGPER processing
+#
+# lgper_init()
+#
+# initialize variables for processing of LGPER information
+#
+# parameters:
+#   none
+#
+# globals:
+#   @lgper_file		- the separate LGPER log files
+#   @lgpersum_file	- the separate summary files
+#   $lgpersum_file	- the united summary file
+#   $lgper_dir		- directory from which LGPER files are retrieved
+#   $arcdir_per		- directory into which LGPER SUM files are stored
+#
+# locals (inherited):
+#   rtn_val	- return value to main; modifiable by all sub's called
+#
+# locals (defined):
+#   none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val	- return value from subroutines and commands
+#
+
+{
+  # parameters set from environment variables
+  # (others are set in offln.pl)
+  $lgper_dir = $ENV{lgper_dir};
+  $arcdir_per = $ENV{arcdir_per};
+  
+  # date strings for input/output files
+  my($cdate) = `getydate -t ${date} -d 0`;
+  my($csubdate) = `getydate -t ${date} -d 0 -L | cut -c1-4`;
+  chomp($csubdate);
+
+  # date strings for names of old files (to remove before starting)
+  my($y_cdate) = `getydate -t ${date} `;
+  my($y_csubdate) = `getydate -t ${date} -L | cut -c1-4`;
+  chomp($y_csubdate);
+
+  $DBUG && print DJUNK "\nLGPER\n-----\n";
+  $DBUG && print DJUNK "INPUT, OUTPUT, & Yesterday's FILES\n";
+
+  # input files
+  $lgpersum_file = "per${cdate}.sum";
+  $lgperld_file = "per${cdate}.ld";
+  $dbld_config = "ld${cdate}.cfg";
+  $lgperubsum_file = "per${cdate}UB.sum";
+
+  $DBUG && print DJUNK "lgpersum_file: $lgpersum_file\n";
+  foreach $i (00..23) {
+    if (10 > $i) {
+      $hr = "0$i";
+    }
+    else {
+      $hr = "$i";
+    }
+
+    # test for existance of the logfiles, before putting them into the list.
+    # if some are missing, keep a record of which ones.
+    my($tempfile) = "per${csubdate}${hr}.lg";
+    if (13 == ($rv = `rsh -l ${remotelogin} ${remotehost} 'test ! -f  ${lgper_dir}/${tempfile} || echo 13'`)) {
+      $lgper_file[$i] = "per${csubdate}${hr}.lg";
+      $lgpersum_file[$i] = "per${csubdate}${hr}.sum";
+    }
+    else {
+      $lgper_missing[$i] = "per${csubdate}${hr}.lg";
+    }
+
+    $lgper_yesterfile[$i] = "per${y_csubdate}${hr}.lg";
+    $DBUG && print DJUNK "lgper_file[${i}]: $lgper_file[$i]\n";
+    $DBUG && print DJUNK "lgpersum_file[${i}]: $lgpersum_file[$i]\n";
+    $DBUG && print DJUNK "lgper_yesterfile[${i}]: $lgper_yesterfile[$i]\n";
+  }
+
+  # check for missing log files
+  if (@lgper_missing) {
+    $DBUG && printf DJUNK "missing log files!: %s\n", join(" ", @lgper_missing);
+    printf LOGFILE "\nWARNING. LGPER files absent: %s\n", join(" ", @lgper_missing);
+    local($lgper_missing_mail) = "\t%s\n", join("\n\t", @lgper_missing);
+  }
+}
+
+#*SUBTTL lgper - run thread for LGPER processing
+#
+# lgper()
+#
+# run entire thread for processing of LGPER information
+#
+# parameters:
+#   none
+#
+# globals:
+#
+# locals (inherited):
+#   rtn_val	- return value to main; modifiable by all sub's called
+#
+# locals (defined):
+#   none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val	- return value from subroutines and commands
+#
+
+sub lgper 
+{
+
+  LOGENTER("LGPER");
+  !($rtn_val = &lgper_extract) || return($rtn_val);
+  !($rtn_val = &lgper_db) || return($rtn_val);
+  LOGEXIT("LGPER");
+
+  return($rtn_val);
+}
+
+#*SUBTTL lgper_extract - get the LGPER files and run the extract utilities
+#
+# lgper_extract()
+#
+# run the data extraction sub-thread for processing of LGPER information
+#
+# parameters:
+#   none
+#
+# globals:
+#
+# locals (inherited):
+#   rtn_val	- return value to main; modifiable by all sub's called
+#
+# locals (defined):
+#   none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val	- return value from subroutines and commands
+#
+
+sub lgper_extract 
+{
+
+  LOGENTER("LGPER_EX");
+  !($rtn_val = &lgper_rcp) || return($rtn_val);
+  LOGEXIT("LGPER_EX");
+
+  return($rtn_val);
+}
+
+#*SUBTTL lgper_db - run the LGPER database processing and dependants
+#
+# lgper_db()
+#
+# run the database loading sub-thread for processing of LGPER information
+#
+# parameters:
+#   none
+#
+# globals:
+#
+# locals (inherited):
+#   rtn_val	- return value to main; modifiable by all sub's called
+#
+# locals (defined):
+#   none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val	- return value from subroutines and commands
+#
+
+sub lgper_db 
+{
+
+  LOGENTER("LGPER_DB");
+  !($rtn_val = &lgper_p2tally) || return($rtn_val); #parallel
+  !($rtn_val = &lgper_a2optally) || return($rtn_val); 
+  LOGEXIT("LGPER_DB");
+
+  return($rtn_val);
+}
+
+#*SUBTTL lgper_rcp - remote copy the LGPER input files from production
+#
+# lgper_rcp
+#
+# remote copies the LGPER input files from production
+#
+# parameters:
+#   none
+#
+# globals:
+#
+# locals (inherited):
+#   rtn_val	- return value to main; modifiable by all sub's called
+#
+# locals (defined):
+#   none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val	- return value from subroutines and commands
+#
+
+sub lgper_rcp 
+{
+
+  LOGENTER("LGPER: RCP");
+
+  # remove old LGPER files
+  my($filestring) = join(' ', @lgper_yesterfile); 
+  system("rm -f ${filestring}");
+
+  # get USW Performance Log
+  foreach $i (@{lgper_file}) {
+    print(LOGFILE "start RCP of ${i}: ", `date`);
+    # putting ln -s instead of rcp for disk space reasons 1/31/02
+    if ($rtn_val = system ("ln -s ${lgper_dir}/${i} . >>$logfile 2>>$logfile")) {
+
+      # there was an error.  call error handler and exit
+      error_out($E_RCPLGPER, $rtn_val);
+      return($rtn_val);
+    }
+  }
+
+  # RCP is complete, process what you pulled over with lgper_logx()
+  !($rtn_val = &lgper_logx) || return($rtn_val);
+
+  # all processing here is done, it's ok to remove the log files
+  $filestring = join(' ', @lgper_file); 
+  system("rm -f ${filestring}");
+
+  LOGEXIT("LGPER: RCP");
+
+  return($rtn_val);
+}
+
+#*SUBTTL lgper_logx - run LGPER extraction routine and all dependants
+#
+# lgper_logx()
+#
+# extract data from LGPER using LOGX utility, run archive of output
+#
+# parameters:
+#   none
+#
+# globals:
+#
+# locals 
+#   inherited:
+#     rtn_val	- return value to main; modifiable by all sub's called
+#
+#   defined:
+#     none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val	- return value from subroutines and commands
+#
+
+sub lgper_logx 
+{
+
+  LOGENTER("LGPER: LOGX");
+
+  # extract information from LGPER
+  print(LOGFILE "start of LGPERX for ${date}: ", `date`);
+  foreach $i (@lgper_file) {
+    print LOGFILE "  --$i: ", `date`;
+    if ($rtn_val = system("nice lgperx ${i} >> $logfile 2>> $logfile")) {
+  
+      # there was an error.  call error handler and exit
+      error_out($E_LGPERX, $rtn_val);
+      return($rtn_val);
+    }
+  }
+  print(LOGFILE "finish of LGPERX for ${date}: ", `date`);
+
+  # finished w/ log files, remove them so we'll have enough room
+  $filestring = join(' ', @lgper_file);
+  system("rm -f ${filestring}");
+
+  # create one summary file from the many
+  print(LOGFILE "create a single summary file for ${date}: ", `date`);
+  my($catcommand) = "cat /dev/null > sumfile.temp 2>> $logfile";
+  !DBUG || print (DJUNK "catcommand: ${catcommand}\n");
+  if ($rtn_val = system("$catcommand")) {
+
+    # there was an error.  call error handler and exit
+    error_out(E_LGPERXCAT, $rtn_val);
+
+    return($rtn_val);
+  }
+  foreach $i (@lgpersum_file) {
+    print LOGFILE "  --$i: ", `date`;
+    my($catcommand) = "cat ${i} >> sumfile.temp 2>> $logfile";
+    !DBUG || print (DJUNK "catcommand: ${catcommand}\n");
+    if ($rtn_val = system("$catcommand")) {
+
+      # there was an error.  call error handler and exit
+      error_out($E_LGPERXCAT, $rtn_val);
+      return($rtn_val);
+    }
+    # rm single sum file for space reasons
+    my($catcommand) = "rm -f ${i} 2>> $logfile";
+    !DBUG || print (DJUNK "catcommand: ${catcommand}\n");
+    if ($rtn_val = system("$catcommand")) {
+
+      # there was an error.  call error handler and exit
+      error_out($E_LGPERXCAT, $rtn_val);
+      return($rtn_val);
+    }
+  }
+
+  # Now restore the sum file. 
+  qx(mv sumfile.temp ${lgpersum_file});
+
+  # archive the LGPER OUTPUT
+  !($rtn_val = &lgper_archive) || return($rtn_val);
+
+  LOGEXIT("LGPER: LOGX");
+  return($rtn_val);
+}
+
+#*SUBTTL lgper_archive - archive LGPER output files and compress
+#
+# lgper_archive()
+#
+# archive the summary files to their directories & compress them
+#
+# parameters:
+#   none
+#
+# globals:
+#
+# locals (inherited):
+#   rtn_val	- return value to main; modifiable by all sub's called
+#
+# locals (defined):
+#   none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val	- return value from subroutines and commands
+#
+
+sub lgper_archive 
+{
+
+  LOGENTER("LGPER: ARCHIVE");
+
+  # ensure that the sumfile doesn't get removed if the archive fails
+  my($notarc) = "ARC.${lgpersum_file}.notarc";
+  system("touch ${notarc}");
+
+  # archive the LGPER-SUM file
+  print(LOGFILE "start for archive of ${lgpersum_file}: ", `date`);
+  if ($rtn_val = &archive(${arcdir_per}, ${lgpersum_file})) {
+
+    # there was an error.  call error handler and exit
+    $rtn_val = warn_out($W_ARCHIVEPER, $rtn_val);
+    return($rtn_val);
+  }
+  else {
+
+    # the archive completed successfully, remove the notarc file
+    system("rm -f ${notarc}");
+  }
+
+  LOGEXIT("LGPER: ARCHIVE");
+
+  return($rtn_val);
+}
+
+#*SUBTTL lgper_p2tally - run db tally LGPER message volume information
+#
+# lgper_p2tally()
+#
+# tally the lgper message volume information using P2TALLY---first purging
+# any data that lay in the target table (A2PERF) for the period to be run.
+#
+# parameters:
+#   none
+#
+# globals:
+#
+# locals 
+#   inherited:
+#     rtn_val	- return value to main; modifiable by all sub's called
+#
+#   defined:
+#     none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val	- return value from subroutines and commands
+#
+
+sub lgper_p2tally 
+{
+
+  LOGENTER("LGPER: P2TALLY");
+
+  # see if LGPER SUM file is in 'execute directory'
+  # if not check in the archive directory, and uncompress it
+  # write a function that does this for all tally programs
+
+  # calculate date 15 days ago.
+  my($odate) = `getydate -t ${date} -s -d -15`;
+  # purge information that is 15 days old from a2perf
+  print(LOGFILE "start of PURGE of A2PERF for ${odate}: ", `date`);
+  if ($rtn_val = system("purge -d ${database_b} -t ${odate} -n a2perf -f ddate >> $logfile 2>> $logfile")) {
+
+    # there was an error.  call error handler and exit
+    error_out($E_PURGEA2PERF, $rtn_val);
+    return($rtn_val);
+  }
+  
+  # purge today's information from a2perf
+  print(LOGFILE "start of PURGE of A2PERF for ${date}: ", `date`);
+  if ($rtn_val = system("purge -d ${database_b} -t ${date} -n a2perf -f ddate >> $logfile 2>> $logfile")) {
+
+    # there was an error.  call error handler and exit
+    error_out($E_PURGEA2PERF, $rtn_val);
+    return($rtn_val);
+  }
+
+  # tally LGPER SUM performance information
+  print(LOGFILE "start of P2TALLY for ${lgpersum_file}: ", `date`);
+  if ($rtn_val = system("p2tally_pr -l ${lgpersum_file} > ${lgperld_file} 2>> $logfile")) {
+
+    # there was an error.  call error handler and exit
+    error_out($E_P2TALLY, $rtn_val);
+    return($rtn_val);
+  }
+  print(LOGFILE "end of print for ${lgpersum_file}: ", `date`);
+  
+  # tally LGPER UB SUM performance information (Ultra Bus)
+  print(LOGFILE "start of P2TALLY for ${lgperubsum_file}: ", `date`);
+  if ($rtn_val = system("p2tally_pr -l ${lgperubsum_file} >> ${lgperld_file} 2>> $logfile")) {
+
+    # there was an error.  call error handler 
+    $rtn_val = warn_out($E_P2TALLY, $rtn_val);
+  }
+
+  # Build the dbload config file.
+  open(LDC, ">$dbld_config");
+  print LDC "FILE ${lgperld_file} DELIMITER '|' 9;\n";
+  print LDC "INSERT INTO a2perf;\n";
+  close (LDC);
+
+  # Now create command line for DBLOAD
+  $options  = " -d ${database_b}";           # specify the database
+  $options .= " -n 50000";                   # specify the commit interval
+  $options .= " -l dbload.errors";           # specify the error log file
+  $options .= " -r";                         # load without locking table
+
+  # Run DBLOAD
+  print(LOGFILE "end of print for ${lgperubsum_file}: ", `date`);
+  print(LOGFILE "Start of DBLOAD. dbload command: \n");
+  print(LOGFILE "/informix/bin/dbload -c ${dbld_config} ${options} >> $logfile 2>> $logfile\n");
+  system("/informix/bin/dbload -c ${dbld_config} ${options} >> /dev/null 2>> $logfile");
+
+  print(LOGFILE "End of DBLOAD at ", `date`);
+  # delete LGPER SUM file, if it's safe to do so
+  if (-e "ARC.${lgpersum_file}.notarc") {
+    print LOGFILE "CANNOT REMOVE: archive of ${lgpersum_file} failed.\n";
+  }
+  else {
+    system("rm -f  ${lgpersum_file}");
+  }
+
+  # remove load and config file for dbload
+  system("rm -f  ${dbld_config}");
+  system("rm -f  ${lgperld_file}");
+
+  LOGEXIT("LGPER: P2TALLY");
+
+  return($rtn_val);
+}
+
+#*SUBTTL lgper_a2optally - run db optimization of LGPER performance information
+#
+# lgper_a2optally()
+#
+# tally the LGPER performance information (by hour) using A2OPTALLY---first 
+# purging any data that lay in the target table (A2PERF) for the 
+# period to be run.
+#
+# parameters:
+#   none
+#
+# globals:
+#
+# locals (inherited):
+#   rtn_val     - return value to main; modifiable by all sub's called
+#
+# locals (defined):
+#   none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val     - return value from subroutines and commands
+#
+
+sub lgper_a2optally 
+{
+  LOGENTER("LGPER: A2OPTALLY");
+
+  # purge information from a2operf
+  print(LOGFILE "start of PURGE of A2OPERF for ${date}: ", `date`);
+  if ($rtn_val = system("purge -d ${database_b} -t ${date} -n a2operf -f ddate >> $logfile 2>> $logfile")) {
+
+    # there was an error.  call error handler and exit
+    error_out($E_PURGEA2OPERF, $rtn_val);
+    return($rtn_val);
+  }
+
+  # tally LGPER A2OPTALLY performance information (by day)
+  print(LOGFILE "start of A2OPTALLY for ${date}: ", `date`);
+  
+  # a2optally needs to be in six parts: each doing 4 hours.
+  if ($rtn_val = system("a2optally -t ${date}_00:00 -u ${date}_03:59 >> $logfile 2>> $logfile")) {
+
+    # there was an error.  call error handler and exit
+    error_out($E_A2OPTALLY, $rtn_val);
+    return($rtn_val);
+  }
+
+  if ($rtn_val = system("a2optally -t ${date}_04:00 -u ${date}_07:59 >> $logfile 2>> $logfile")) {
+
+    # there was an error.  call error handler and exit
+    error_out($E_A2OPTALLY, $rtn_val);
+    return($rtn_val);
+  }
+
+  if ($rtn_val = system("a2optally -t ${date}_08:00 -u ${date}_11:59 >> $logfile 2>> $logfile")) {
+
+    # there was an error.  call error handler and exit
+    error_out($E_A2OPTALLY, $rtn_val);
+    return($rtn_val);
+  }
+  
+  if ($rtn_val = system("a2optally -t ${date}_12:00 -u ${date}_15:59 >> $logfile 2>> $logfile")) {
+
+    # there was an error.  call error handler and exit
+    error_out($E_A2OPTALLY, $rtn_val);
+    return($rtn_val);
+  }
+  if ($rtn_val = system("a2optally -t ${date}_16:00 -u ${date}_19:59 >> $logfile 2>> $logfile")) {
+
+    # there was an error.  call error handler and exit
+    error_out($E_A2OPTALLY, $rtn_val);
+    return($rtn_val);
+  }
+  if ($rtn_val = system("a2optally -t ${date}_20:00 -u ${date}_23:59 >> $logfile 2>> $logfile")) {
+
+    # there was an error.  call error handler and exit
+    error_out($E_A2OPTALLY, $rtn_val);
+    return($rtn_val);
+  }
+
+  print(LOGFILE "end of A2OPTALLY for ${lgpervol_file}: ", `date`);
+  print(LOGFILE "end time of LGPER-SUM-PERFORMANCE thread is ", `date`, ".\n");
+
+  LOGEXIT("LGPER: A2OPTALLY");
+
+  return($rtn_val);
+}
+
+1;
+
+#*SUBTTL structures for error_out and warning_out mailings:  lgper_rcp()
+#
+# variables are refernces to a hash with the following keys:
+#   subject	- phrase to go into the subject of the mail message
+#   rs_here	- (restart here) the command-line option needed to 
+#                 start offln.pl 
+#   mf	- (missed fork) the command-line option of any subthreads that
+#	  might be missed should you start at 'rs_here'.  Whether this
+#  	  option is included in the restart command mailed to the
+#  	  operators depends upon if the original command line option
+#    	  (for the run of offln.pl that produced this mail) would have
+#  	  executed the subthreads.  A flag indicating this is in offln.pl 
+#  	  in the hash %procs, under the key (of the same name) 'mf'.
+#   rs_higher	- (restart higher) oftentimes if the particular thread
+#         	  that errored-out, errored-out during the first function
+#         	  of its first subthread, it would be more effecient to 
+#       	  restart the thread than to use the 'rs_here' option, 
+#        	  followed by the 'mf' option(s).  This is the command-line
+#        	  option that would restart the thread.
+#   body	- this is the body of the mail message.  In it should be 
+#    		  a description of the problem, possible reasons for it's 
+#       	  occurrence, potential solutions for the problem, and 
+#        	  what the operator needs to do to restart the script.
+#
+
+$E_LGPERMISSINGLOGS = { 'subject', "WARNING: Missing LGPER Log(s)", 
+  'rs_here', "LGPER", 
+'body', "there are one or more LGPER Logs missing:
+${lgper_missing_mail}
+
+This is not uncommon if the system crashed/was down during the day in 
+question.  However, if there was no failover/fallover with significant
+downtime, Operations should worry about where the missing file(s) 
+disappeared to.  The files should be in ${lgper_dir}.
+
+The process will continue to run, even with this warning.  If you think
+people should be worried, notify someone the next working day (but wait
+no longer than a week).
+
+(There is no need to restart)
+"};
+
+
+
+$E_LGPERNOTOK = { 'subject', "LGPER thread failed", 
+  'rs_here', "LGPER_EX", 
+  'mf', "LGPER_DB", 
+  'rs_higher_f', 1, 
+  'rs_higher', "LGPER", 
+'body', "the LGPER.notok file was in existance when this thread tried to run
+
+Another LGPER thread could currently be running.  Check to be sure
+that there isn't.  If another is running, wait for it to complete before
+restarting.
+
+Or a previous LGPER thread could have failed.  Check the ${logfile} and 
+past mailings to determine if this is the case.  If so, see that the 
+failed process is restarted.
+
+To restart:
+  o remove the file 'LGPER.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+
+$E_RCPLGPER = {
+  'subject', "RCP of LGPER files failed", 
+  'rs_here', "LGPER_EX", 
+  'mf', "LGPER_DB", 
+  'rs_higher_f', 1, 
+  'rs_higher', "LGPER", 
+'body', "the remote copy of one of the LGPER files failed
+
+Check to make sure that the remote file exists in ${remotehost}:${lgper_dir}/.
+If it is not there, figure out why, and where it's gone to, then restart.
+
+Check to make sure that the permissions are set up correctly on the remote 
+machine (${remotehost}) for remote copying as the '${remotelogin}' login
+
+Also this could be the result of the disk filling up.
+
+To restart:
+  o remove the file 'LGPER.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+
+$E_RCPPSUM = {
+  'subject', "LGPER file failed checksum", 
+  'rs_here', "LGPER_EX", 
+  'mf', "LGPER_DB", 
+  'rs_higher_f', 1, 
+  'rs_higher', "LGPER", 
+'body', 
+"checksum reported that the remote copy of one of the files was flawed
+
+There may have been a flaw in the transfer of the file.  Double check the 
+error by using the UNIX command 'sum' on the local and remote file.  The 
+problem usually clears up if you just try again.
+
+To restart:
+  o remove the file 'LGPER.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+#*SUBTTL structures for error_out and warning_out mailings:  lgper_logx()
+#
+# variables are refernces to a hash with the following keys:
+#   subject	- phrase to go into the subject of the mail message
+#   rs_here	- (restart here) the command-line option needed to 
+#                 start offln.pl 
+#   mf	- (missed fork) the command-line option of any subthreads that
+#	  might be missed should you start at 'rs_here'.  Whether this
+#  	  option is included in the restart command mailed to the
+#  	  operators depends upon if the original command line option
+#    	  (for the run of offln.pl that produced this mail) would have
+#  	  executed the subthreads.  A flag indicating this is in offln.pl 
+#  	  in the hash %procs, under the key (of the same name) 'mf'.
+#   rs_higher	- (restart higher) oftentimes if the particular thread
+#         	  that errored-out, errored-out during the first function
+#         	  of its first subthread, it would be more effecient to 
+#       	  restart the thread than to use the 'rs_here' option, 
+#        	  followed by the 'mf' option(s).  This is the command-line
+#        	  option that would restart the thread.
+#   body	- this is the body of the mail message.  In it should be 
+#    		  a description of the problem, possible reasons for it's 
+#       	  occurrence, potential solutions for the problem, and 
+#        	  what the operator needs to do to restart the script.
+#
+
+
+$E_LGPERXNOTOK = { 'subject', "LGPER thread failed", 
+  'rs_here', "LGPER_LOGX", 
+  'mf', "LGPER_DB", 
+  'rs_higher_f', 0, 
+  'rs_higher', "", 
+'body', "the LGPER.notok file was in existance when LGPERX tried to run
+
+Another LGPER thread  could currently be running.  Check to be sure that 
+there isn't.  If another is running, wait for it to complete before 
+restarting.
+
+Or a previous LGPER thread could have failed.  Check the ${logfile} and 
+past mailings to determine if this is the case.  If so, see that the 
+failed process is restarted.
+
+To restart:
+  o remove the file 'LGPER.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+
+$E_LGPERX = {
+  'subject', "LGPER Extract program failed", 
+  'rs_here', "LGPER_LOGX", 
+  'mf', "LGPER_DB", 
+  'rs_higher_f', 0, 
+  'rs_higher', "", 
+'body', "the program LGPERX bombed out on one of its 24 log files
+
+The disk may have filled up.  If it has, remove any unneccessary files;
+or (if all files are important) if other offline processes are running,
+wait for them to archive their data files and free up some room (if the 
+disk filling up didn't crash those processes as well).  If old data files
+are filling up disk space, you may need to archive them by hand using the
+'LGPER_ARC' or 'LGRPT_ARC' options to '$ENV{0}'.
+
+If that's not it, check the ${logfile} to see what the problem was.  
+If the trouble cannot be fixed, inform someone in the morning.
+
+To restart:
+  o remove the file 'LGPER.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+#*SUBTTL structures for error_out and warning_out mailings:  lgper_archive()
+#
+# variables are refernces to a hash with the following keys:
+#   subject	- phrase to go into the subject of the mail message
+#   rs_here	- (restart here) the command-line option needed to 
+#                 start offln.pl 
+#   mf	- (missed fork) the command-line option of any subthreads that
+#	  might be missed should you start at 'rs_here'.  Whether this
+#  	  option is included in the restart command mailed to the
+#  	  operators depends upon if the original command line option
+#    	  (for the run of offln.pl that produced this mail) would have
+#  	  executed the subthreads.  A flag indicating this is in offln.pl 
+#  	  in the hash %procs, under the key (of the same name) 'mf'.
+#   rs_higher	- (restart higher) oftentimes if the particular thread
+#         	  that errored-out, errored-out during the first function
+#         	  of its first subthread, it would be more effecient to 
+#       	  restart the thread than to use the 'rs_here' option, 
+#        	  followed by the 'mf' option(s).  This is the command-line
+#        	  option that would restart the thread.
+#   body	- this is the body of the mail message.  In it should be 
+#    		  a description of the problem, possible reasons for it's 
+#       	  occurrence, potential solutions for the problem, and 
+#        	  what the operator needs to do to restart the script.
+#
+
+
+$E_LGPERXCAT = {
+  'subject', "LGPER summary files failed to concatenate", 
+  'rs_here', "LGPER_LOGX", 
+  'mf', "LGPER_DB", 
+  'rs_higher_f', 0, 
+  'rs_higher', "", 
+'body', "the concatenation of the hourly LGPERX files into ${lgper_file} failed
+
+The disk may have filled up.  If it has, remove any unneccessary files;
+or (if all files are important) if other offline processes are running,
+wait for them to archive their data files and free up some room (if the 
+disk filling up didn't crash those processes as well).  If old data files
+are filling up disk space, you may need to archive them by hand using the
+'LGPER_ARC' or 'LGRPT_ARC' options to '$ENV{0}'.
+
+If that's not it, check the ${logfile} to see what the problem was.  
+If the trouble cannot be fixed, inform someone in the morning.
+
+To restart:
+  o remove the file 'LGPER.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+
+$W_ARCHIVEPER = {
+  'subject', "ARCHIVE of LGPER summary file failed", 
+  'rs_here', "LGPER_ARC", 
+'body', "the archive of ${lgpersum_file} into ${arcdir_per}/ failed
+
+512: No space left on device
+The disk may have filled up.  If it has, you will need to remove old
+or unneccessary files.  Procedures for dealing with this situation are
+covered in Appendix A of the 'USW Offline-Processing Operations 
+Procedures' document found on the website.
+
+256: Permission denied
+This file may already have been archived. If the archived file already
+exists and is deemed bad, move it to a minus file and archive by hand.
+
+If that's not it, check the ${logfile} to see what the problem was.  
+If the trouble cannot be fixed, inform someone in the morning.
+
+To archive by hand:
+  o enter the command 'nohup $ENV{0} $date LGPER_ARC &'
+"};
+
+#*SUBTTL structures for error_out and warning_out mailings:  lgper_p2tally()
+#
+# variables are refernces to a hash with the following keys:
+#   subject	- phrase to go into the subject of the mail message
+#   rs_here	- (restart here) the command-line option needed to 
+#                 start offln.pl 
+#   mf	- (missed fork) the command-line option of any subthreads that
+#	  might be missed should you start at 'rs_here'.  Whether this
+#  	  option is included in the restart command mailed to the
+#  	  operators depends upon if the original command line option
+#    	  (for the run of offln.pl that produced this mail) would have
+#  	  executed the subthreads.  A flag indicating this is in offln.pl 
+#  	  in the hash %procs, under the key (of the same name) 'mf'.
+#   rs_higher	- (restart higher) oftentimes if the particular thread
+#         	  that errored-out, errored-out during the first function
+#         	  of its first subthread, it would be more effecient to 
+#       	  restart the thread than to use the 'rs_here' option, 
+#        	  followed by the 'mf' option(s).  This is the command-line
+#        	  option that would restart the thread.
+#   body	- this is the body of the mail message.  In it should be 
+#    		  a description of the problem, possible reasons for it's 
+#       	  occurrence, potential solutions for the problem, and 
+#        	  what the operator needs to do to restart the script.
+#
+
+
+$E_P2TALLYNOTOK = { 
+  'subject', "LGPER thread failed", 
+  'rs_here', "P2TALLY", 
+  'mf', "", 
+  'rs_higher_f', 1, 
+  'rs_higher', "LGPER_DB", 
+'body', "the P2TALLY.notok file was in existance when this thread tried to run
+
+Another P2TALLY could currently be running.  Check to be sure
+that there isn't.  If another is running, wait for it to complete before
+restarting.
+
+Or a previous P2TALLY could have failed.  Check the ${logfile} and 
+past mailings to determine if this is the case.  If so, see that the 
+failed process is restarted.
+
+To restart:
+  o remove the file 'P2TALLY.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+
+$E_PURGEA2PERF = {
+  'subject', "LGPER's purge of the A2PERF table failed", 
+  'rs_here', "P2TALLY", 
+  'mf', "", 
+  'rs_higher_f', 1, 
+  'rs_higher', "LGPER_DB", 
+'body', "the purge of the A2PERF table for ${date} (in ${database_b}) failed
+
+This is a very strange thing to happen.  Double check to make sure no other
+programs are trying to access this table at the same time, then restart.
+If the trouble persists, inform someone in the morning.
+
+To restart:
+  o remove the file 'P2TALLY.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+$E_PURGEA2OPERF = {
+  'subject', "LGPER's purge of the A2OPERF table failed", 
+  'rs_here', "P2TALLY", 
+  'mf', "", 
+  'rs_higher_f', 1, 
+  'rs_higher', "LGPER_DB", 
+'body', "the purge of the A2OPERF table for ${date} (in ${database_b}) failed
+
+This is a very strange thing to happen.  Double check to make sure no other
+programs are trying to access this table at the same time, then restart.
+If the trouble persists, inform someone in the morning.
+
+To restart:
+  o remove the file 'P2TALLY.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+$E_P2TALLY = {
+  'subject', "LGPER's P2TALLY failed", 
+  'rs_here', "P2TALLY", 
+  'mf', "", 
+  'rs_higher_f', 1, 
+  'rs_higher', "LGPER_DB", 
+'body', 
+"the P2TALLY program failed to load data from ${lgper_file} into the database
+
+Check the ${logfile} to see what the problem was.  Double check to make sure 
+no other programs were trying to access this table at the same time, then 
+restart.  If the trouble persists, inform someone in the morning.
+
+To restart:
+  o remove the file 'P2TALLY.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+$E_A2OPTALLY = {
+  'subject', "LGPER's A2OPTALLY failed",
+  'rs_here', "A2OPTALLY",
+  'mf', "",
+  'rs_higher_f', 0,
+  'rs_higher', "",
+'body',
+"the A2OPTALLY program failed to load data from a2perf into the database
+Check the ${logfile} to see what the problem was.  Double check to make sure 
+no other programs were trying to access this table at the same time, then 
+restart.  
+
+If the trouble persists, inform someone immediately using the on-call
+escalation procedures.
+
+To restart:
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+1;

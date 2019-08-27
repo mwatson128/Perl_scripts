@@ -1,0 +1,42 @@
+#!/bin/ksh
+#
+# This script runs (and logs) kmart on demand.  If KivaNet
+# is not running, it logs an error message instead.
+#
+# Designed for cron job use.
+#
+# (]$[) chkkm:1.9 | CDATE=04/29/07 15:37:17
+#
+
+# Source .profile to get KivaNet information
+. ~/.profile > /dev/null 2> /dev/null
+
+PATH=$PATH:/usr/bin:/usr/local/bin:/usr/ucb:/usr/hosts:/etc:/bin:.
+
+# Time zone, date, and log dir
+TZ=GMT0
+export TZ
+DATE=`date '+%m%d%y'`
+MDATE=`date '+%m%y'`
+
+cd $ZONE/perf/kv
+
+if [ ! -d $MDATE ]
+then
+  mkdir $MDATE
+  chmod 775 $MDATE
+fi
+
+cd $MDATE
+
+# Run commands.  Output to logs. 
+
+echo "--------------------------------------------------------------------------------" >> kmart.$DATE
+date >> kmart.$DATE
+if [ "up" = `knetup` ]
+then
+  kmart >> kmart.$DATE 2>&1
+else
+  echo "KivaNet not running." >> kmart.$DATE
+fi
+

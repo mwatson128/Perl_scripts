@@ -1,0 +1,3 @@
+echo "Thank you for marking your changes in PENCIL."
+unget sccs/s.$1
+get sccs/s.$1

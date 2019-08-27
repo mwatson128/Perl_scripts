@@ -1,0 +1,246 @@
+#!/usr/bin/perl
+#
+# Script to report the version numbers of applications in production, test, 
+#  and development
+#
+# (]$[) %M%:%I% | CDATE=%G% %U%
+
+$new = 0;
+$short = 0;
+
+# This is the production support login name
+$PRODLOGIN="uswrpt";
+
+# This is the uat login name for the test comm engines
+$DEVLOGIN="prod_sup";
+$UATLOGIN="uat";
+$QALOGIN="qa";
+#$PRODLOGING="prod_sup";
+
+$USER=`/usr/ucb/whoami`;
+chop($USER);
+
+##  all the version files are stored here
+$dir = "/uswsup01/versions";
+
+## usage
+$usage = "usage:  $0 [-n -s -h]\n";
+
+##  process command line arguments
+$temp = join($",@ARGV);
+@cmdline = split('-',$temp);
+foreach $cmd (@cmdline) {
+
+  ##  -n Refresh all the versions 
+  if ($cmd =~ /^n/) {
+    $new = 1;
+    open(STDERR,">/dev/null");
+    open(STDOUT,">/dev/null");
+  }
+  ##  -s print out the short version
+  if ($cmd =~ /^s/) {
+    $short = 1;
+  }
+  ##  -h print usage statement
+  if ($cmd =~ /^h/) {
+    print $usage;
+    exit 0;
+  }
+}
+
+## These are all the machines we are looking at add and delete at will.
+## I am assuming that all the grouped ce's are the same fs. 
+%mach = (
+  runtime => ["uswdev01", "sundev"],
+  qa => ["uswqa01", "sunt", "sunt2"],
+  uat => ["uswuat01", "sunt", "sunt2"],
+  prod => ["usw_prod", "sunads1", "sunads2", "sunads3", "sunpa", 
+           "sunpb", "suntcp3", "suntcp4", "suntcp5", "suntcp6", "suntcp7",
+           "suntcp8", "sunbdt"],
+);
+
+## do not read the new versions everytime.
+if ($new) {
+
+  if ($DEVLOGIN eq $USER) {
+    foreach $com (@{$mach{runtime}}) {
+      print("$com\n");
+      system("banner $com > $dir/$com.ver");
+      if ($com eq "uswdev01") {
+        system("/usr/local/bin/vcwhat -e OS /uswdev01/usw/runtime/bin/* ".
+	       ">> $dir/usw_test.dev.ver");
+      }
+      elsif ($com eq "sundev") {
+        system("ssh prod_sup@sundev /usr/local/bin/vcwhat -e OS ".
+	       "/usw/runtime/bin/* >> $dir/$com.ver");
+      }
+    }
+  }
+  
+  if ($UATLOGIN eq $USER) {
+    foreach $com (@{$mach{uat}}) {
+      print("$com\n");
+      system("banner $com > $dir/$com.ver");
+      if ($com eq "uswuat01") {
+        system("ssh uat@${com} /usr/local/bin/vcwhat -e OS ".
+	       "/${com}/uat/uswbin/* >> $dir/$com.ver");
+        next;
+      }
+      system("ssh uat@${com} /usr/local/bin/vcwhat -e OS ".
+             "/usr/usw/uat/uswbin/* >> $dir/$com.ver");
+    }
+  }
+  
+  if ($QALOGIN eq $USER) {
+    foreach $com (@{$mach{qa}}) {
+      print("$com\n");
+      system("banner $com > $dir/$com.ver");
+      if ($com eq "uswqa01") {
+        system("ssh qa@${com} /usr/local/bin/vcwhat -e OS ".
+	       "/${com}/qa/uswbin/* >> $dir/$com.ver");
+        next;
+      }
+      system("ssh qa@${com} /usr/local/bin/vcwhat -e OS ".
+             "/usr/usw/qa/uswbin/* >> $dir/$com.ver");
+    }
+  }
+
+
+  if ($PRODLOGIN eq $USER) {
+    foreach $com (@{$mach{prod}}) {
+      print("$com\n");
+      system("banner $com > $dir/$com.ver");
+      if ($com eq "usw_prod") {
+        system("ssh usw@usw_prod /usr/local/bin/vcwhat -e OS".
+	"/prod/uswbin/* >> $dir/$com.ver");
+        next;
+      }
+      system("ssh usw@${com} /usr/local/bin/vcwhat -e OS ".
+             "/usr2/usw/prod/uswbin/* >> $dir/$com.ver");
+    }
+  }
+
+  ## save the date
+  system("date > $dir/date");
+}
+else {
+
+  # Print out the HTML here
+  foreach $top (keys %mach) {
+    foreach $com (@{$mach{$top}}){
+      open(FILE,"$dir/$com.ver");
+      undef $lines;
+      while (<FILE>) {
+	$lines = $lines.$_;
+      }
+      while ($lines =~ /(\w+|\w+.fmt|\w+_\d+.\d+|\w+.\d+.\d+):\s+(\w+)\s+(\d+.\d+.\d+.\d+|\d+.\d+)\s+OS\s+=\s+(\w+)\s(\d+.\d+)/mg) {
+        if ($4 eq "SunOS") {
+          $OS = "Sun";
+        }
+        if ($4 eq "SCO_SV") {
+          $OS = "Sco";
+        }
+	$ver{$1}{$top}{$com} = "$3 ($OS-$5)";
+      }
+      close(FILE);
+    }
+  }
+
+  $date = `cat $dir/date`;
+  chop $date;
+
+  print <<ENDOFTEXT;
+      <tr>
+	<td colspan=4>
+	  <center>
+	    Versions refreshed $date
+	  </center>
+	</td>
+      </tr>
+ENDOFTEXT
+
+  ##  Look though the structure to see if we can get rid of some stuff
+  if ($short) {
+    foreach $app (keys %ver) {
+      undef @test;
+      undef @prod;
+      undef @runtime;
+      foreach $loc ("runtime","test","prod") {
+	foreach $v (sort keys %{$ver{$app}{$loc}}) {
+	  push(@$loc, $ver{$app}{$loc}{$v});
+	}
+      }
+      $hit = 0.0;
+      $hip = 0.0;
+      $hir = 0.0;
+      foreach $t (@test) {
+	@t1 = split('\.',$t);
+	@t2 = split('\.',$hit);
+	if( $t1[0] > $t2[0] || $t1[1] > $t2[1]) {
+	  $hit = $t;
+	}
+      }
+      foreach $p (@prod) {
+	@t1 = split('\.',$p);
+	@t2 = split('\.',$hip);
+	if( $t1[0] > $t2[0] || $t1[1] > $t2[1]) {
+	  $hip = $p;
+	}
+      }
+      foreach $r (@runtime) {
+	@t1 = split('\.',$r);
+	@t2 = split('\.',$hir);
+	if( $t1[0] > $t2[0] || $t1[1] > $t2[1]) {
+	  $hir = $r;
+	}
+      }
+      if ($hit == $hip && $hit == $hir || (! %{$ver{$app}{prod}}) ||
+	  ($hit == $hip && (! %{$ver{$app}{runtime}}))) {
+	delete $ver{$app};
+      }
+    }
+  }
+
+  foreach $app (sort keys %ver) {
+    print <<ENDOFTEXT;
+      <tr>
+	<td>
+	  $app
+	</td>
+ENDOFTEXT
+    foreach $loc ("runtime","test","prod") {
+      print <<ENDOFTEXT;
+	<td align=center>
+	  <table border=0>
+ENDOFTEXT
+      foreach $v (sort keys %{$ver{$app}{$loc}}) {
+        if ("usw_test.dev" eq $v) {
+          $prn = "usw_test";
+        }
+        elsif ("tusw_test.dev" eq $v) {
+          $prn = "tusw_test";
+        }
+        else {
+          $prn = $v;
+        }
+	print <<ENDOFTEXT;
+	    <tr>
+	      <td>
+		<b>$prn</b>
+	      </td>
+	      <td>
+		$ver{$app}{$loc}{$v} 
+	      </td>
+	    </tr>
+ENDOFTEXT
+      } 
+      print <<ENDOFTEXT;
+	  </table>
+	</td>
+ENDOFTEXT
+    }
+	print <<ENDOFTEXT;
+      </tr>
+ENDOFTEXT
+  }
+}

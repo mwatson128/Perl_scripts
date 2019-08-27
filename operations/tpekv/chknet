@@ -1,0 +1,252 @@
+#!/bin/perl
+#
+# Gather network stats: Packets/second and percent collision rate.
+# Store in human-readable log file.  Send most error msgs directly
+# to script maintainer(s) through email.
+#
+# Designed to run hourly, printing a cycle start line and then 119
+# status lines.  Log file named according to date.
+#
+# THIS SCRIPT REQUIRES PERL.
+#
+# (]$[) chknet:1.32 | CDATE=03/31/15 20:14:48
+#
+
+# declare and/or initialize subroutines and variables.
+
+###################################
+##  Forward declare subroutines  ##
+###################################
+sub barf;
+sub alert;
+
+#####################
+##  Set variables  ##
+#####################
+
+$DBUG = 0;
+
+# Address to mail script failures
+$mailaddr = "pedpg\@dhisco.com";
+
+# Addresses to send analysis alerts to
+$alert_recipients = "$mailaddr";
+
+# Logfile prefix
+$logprefix = "netstat.";
+
+# Time between data collection intervals
+my $sleeptime = 10;
+
+# Calculate iterations based on sleeptime
+$iterations = 3600 / $sleeptime;
+$DBUG && print("Sleeptime:$sleeptime  Iterations:$iterations\n");
+
+# Grab command line variable
+if ($ARGV[0]) {
+  $chk_tcpses_event = "true";
+  $threshold = $ARGV[0];
+}
+
+# Set "In Alert" variable used so we only alert once a minute
+$in_alert = 0;
+
+# Get hostname and user ID to determine environment
+$id = `/usr/bin/id`;
+$id =~ /uid.*\((.*)\) gid/;
+$username = $1;
+$hostname = `/usr/bin/uname -n | cut -d . -f 1`;
+chomp $hostname;
+
+$DBUG && print("Username:'$username'\n");
+$DBUG && print("Hostname:'$hostname'\n");
+
+if ($hostname =~ /usw./ || $hostname =~ /dhsc./ ) {
+  $mailcmd = "/usr/bin/mailx";
+  $logpath = "/$hostname/perf/kv";
+}
+elsif ($hostname =~ /sun..+/) {
+  $mailcmd = "/usr/bin/mailx";
+  if ($username =~ /^qa$/) {
+    $logpath = "/usr/usw/qa/kv";
+  }
+  else {
+    $logpath = "/usr2/usw/perf/kv";
+  }
+  $logpath = "/usr2/usw/perf/kv"
+} 
+else {
+  print "Unknown User ($username) or host ($hostname)\n";
+  exit;
+}
+$DBUG && print("Logpath:$logpath\n");
+
+# Loop for an hour
+for ($i = $iterations; 0 < $i; $i--) {
+
+  # time/date -- format for printing.
+  ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = gmtime();
+  $date = sprintf("%02d/%02d/%04d %02d:%02d:%02d", $mon + 1, $mday,
+                     $year + 1900, $hour, $min, $sec);
+  $year = $year % 100;
+  $currtime = sprintf "%02d:%02d:%02d", $hour, $min, $sec;
+
+  $DBUG && print("Currtime:$currtime\n");
+
+  # go to correct dir, determine file name.  done each time through loop,
+  # so it'll adapt if day/month/year changes while running.
+  chdir $logpath or barf "Can't cd to $logpath: $!";
+  $logdir = sprintf("%02d%02d", $mon + 1, $year);
+  if (! -d $logdir) {
+    `mkdir $logdir 2>&1`;
+    `chmod 775 $logdir 2>&1`;
+  }
+  $DBUG && print("Logdir:$logdir\n");
+  chdir $logdir or barf "Can't access $logdir: $!";
+  $filename = sprintf("%s%02d%02d%02d", $logprefix, $mon + 1, $mday, $year);
+  $DBUG && print("Filename:$filename\n");
+
+  @ent_list = ();
+
+  # get netstat info.
+  @input = `netstat -i 2>&1`;
+  #Kernel Interface table
+  #Iface      MTU    RX-OK RX-ERR RX-DRP RX-OVR    TX-OK TX-ERR TX-DRP TX-OVR Flg
+  #eth0      1500    31947      0   3026 0         24900      0      0      0 BMRU
+  #lo       65536        4      0      0 0             4      0      0      0 LRU
+  foreach $line (@input) {
+    next if ($line =~ /^#|^$/);
+
+    # We only care about eth0
+    if ($line =~ /^eth0/) {
+      @word = split(' ', $line);
+      $nw_name = "eth0";
+
+      $newinpkts{$nw_name} = $word[2];
+      $newoutpkts{$nw_name}= $word[6];
+      $DBUG && print("before, \tnewin = $newinpkts{$nw_name}, \tnewout = $newoutpkts{$nw_name}\n");
+
+      # calculate numbers.
+      # packets rolls over at 4GB
+
+      $DBUG && print("old, \tinput = $oldinpkts{$nw_name}, \toutput = $oldoutpkts{$nw_name}\n");
+      if ($newinpkts{$nw_name} < $oldinpkts{$nw_name}) {
+        $diffpkts = ($newinpkts{$nw_name} + 4294967295) - $oldinpkts{$nw_name};
+        $inrate{$nw_name} = $diffpkts / $sleeptime;
+      }
+      else {
+        $diffpkts = $newinpkts{$nw_name} - $oldinpkts{$nw_name};
+        $inrate{$nw_name} = $diffpkts / $sleeptime;
+      }
+      if ($newoutpkts{$nw_name} < $oldoutpkts{$nw_name}) {
+        $diffpkts = ($newoutpkts + 4294967295) - $oldoutpkts{$nw_name};
+        $outrate{$nw_name} = $diffpkts / $sleeptime;
+      }
+      else {
+        $diffpkts = $newinpkts{$nw_name} - $oldinpkts{$nw_name};
+        $outrate{$nw_name} = $diffpkts / $sleeptime;
+      }
+      $DBUG && print("$nw_name, \tinrate = $inrate{$nw_name}, \toutrate$outrate{$nw_name}\n");
+
+    } # end of if netname
+  }  # end of foreach line
+
+  $nw_name = "eth0";
+  $aggoutrate += $outrate{$nw_name};
+  $agginrate += $inrate{$nw_name};
+
+  # Now make the oldinpkts = newinpkts for this ent
+  $oldinpkts{$nw_name} = $newinpkts{$nw_name};
+  $oldoutpkts{$nw_name} = $newoutpkts{$nw_name};
+
+  # because each iteration depends on the one before, the first is almost
+  # always wrong.  print cycle start header instead.
+  if ($not_first_time) {
+
+    $rate = $agginrate + $aggoutrate;
+    $DBUG && print "\n------------------------------\n";
+    $DBUG && printf "sumary %s | %7.2f in | %7.2f out | %7.2f pkts/sec\n",
+           $date, $agginrate, $aggoutrate, $rate;
+    open(NSTLOG, ">> $filename") or barf "Can't open $filename: $!";
+    printf(NSTLOG "%s | %7.2f in | %7.2f out | %7.2f pkts/sec\n",
+           $date, $agginrate, $aggoutrate, $rate);
+    close(NSTLOG);
+
+    # Analyze pkts if flag set
+    if ($chk_tcpses_event) {
+      if ($rate < $threshold) {
+        if (1 == $in_alert) {
+          # Only alert once a minute
+          if ($min > $alert_min) {
+            $alert_min = $min;
+            alert($rate, $hostname, $currtime, "1");
+          }
+        }
+        else {
+          $in_alert = 1;
+          $alert_min = $min;
+          alert($rate, $hostname, $currtime, "1");
+        }
+      } 
+      else {
+        $in_alert = 0;
+      }
+      if ($chk_tcpses_tpe eq "true") {
+        # Perf RCP causes false pages at 2 minutes after the hour
+        if ((2 != $min) && ((2*$rate) < $aggoldrate) && 
+            ($rate < 400) && ($aggoldrate > 1000)) {
+          alert($rate, $hostname, $currtime, "2", $aggoldrate);
+        } 
+      }
+    }
+  }
+  else {
+    open(NSTLOG, ">> $filename") or barf "Can't open $filename: $!";
+    print NSTLOG "$date + ---- new log cycle ----\n";
+    close(NSTLOG);
+    $not_first_time = "true";
+  }
+
+  # prepare for next iteration.
+  $aggoldoutrate = $aggoutrate;
+  $aggoldinrate = $agginrate;
+  $aggoldrate = $rate;
+  $rate = 0;
+  $aggoutrate = 0;
+  $agginrate = 0;
+
+  # doze until next iteration.
+  sleep($sleeptime);
+}
+
+# subroutine to send fatal error msgs through email
+sub barf {
+  my ($barfmsg, @stuff) = @_;
+  open MAILPIPE, "| $mailcmd -s 'chknet error message from $hostname' $mailaddr"
+    or die "Error opening mail pipe: $!";
+  print MAILPIPE "$date\n";
+  print MAILPIPE $barfmsg;
+  close MAILPIPE or die "Error closing mail pipe: $!";
+  exit 1;
+}
+
+#########################
+##  Subroutine: alert  ##
+#########################
+sub alert {
+  
+  # Assign subroutine args to variables
+  my ($pkts, $system, $time, $alert_type, $prev_pkts, @junk) = @_;
+
+  # Build mail command
+  if ($alert_type != 2) {
+    $MAIL_CMD = sprintf "%s -s \"%s hit %s pkts/sec at %s\" %s < /dev/null",
+         $mailcmd, $system, $pkts, $time, $alert_recipients;
+  }
+  else {
+    $MAIL_CMD = sprintf 
+         "%s -s \"%s dropped to %s from %s pkts/sec at %s\" %s < /dev/null", 
+         $mailcmd, $system, $pkts, $prev_pkts, $time, $alert_recipients;
+  } 
+  system $MAIL_CMD;
+}

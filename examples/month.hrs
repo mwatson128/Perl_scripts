@@ -1,0 +1,820 @@
+#! /bin/perl
+# This program looks at the /reports/monthly/billing
+# *.bil files and extracts certain values for the
+# people in Thisco Customer Service.  This program
+# was written by Michael Jolly.
+# When running this file, it creates a file called hrsfile.txt.
+# You will neet to rename the file for that month ex.1199.hrsfile.txt
+# This is run for the OPS report.
+# (]$[) month.hrs:1.30 | CDATE=09/19/01 13:33:47
+
+require "/home/mikew/lib/jlib.pm";
+
+$usage =
+"Usage: $0\n".
+"       -m Month/Year of report (mm/yy)\n".
+"       [ -v verbose output ]\n";
+
+$report_dir = "/usw/reports/monthly/billing";
+
+%HRSLIST = (
+  "AX" => "Anasazi",
+  "AC" => "Active Hotels",
+  "BW" => "Best Western",
+  "C3" => "Cheapestdeals",
+  "CD" => "Concorde",
+  "CH" => "Choice Hotels International",
+  "DE" => "Delta Hotels and Resorts",
+  "DW" => "Disney Hotels & Resorts",
+  "FE" => "Forte",
+  "GR" => "Global Resource Inc.",
+  "HC" => "Hotel Switch",
+  "HS" => "HFS",
+  "HH" => "Hilton International",
+  "HI" => "Holiday Inn",
+  "HK" => "Hotkey International",
+  "HY" => "Hyatt International",
+  "IC" => "Inter-Continental Hotels",
+  "ID" => "Indecorp",
+  "KC" => "Kimpton",
+#  "LS" => "Las Vegas Travlel",
+  "LM" => "Lexington Services",
+  "LQ" => "La Quinta",
+  "MC" => "Marriott Corporation",
+  "OC" => "Hotel Okura",
+  "OM" => "Omni Hotels",
+  "PR" => "Promus Hotels Inc.",
+  "QM" => "Queens Moat",
+  "RF" => "Red Roof Inns Inc.",
+  "TA" => "Reserv Hotels",
+  "RX" => "Ring Hotels",
+  "TI" => "Thistle",
+  "SI" => "Sheraton Corporation",
+  "SM" => "Sol Melia",
+  "PH" => "Preferred Hotels",
+  "UE" => "Universal Hotels",
+  "UI" => "Utell International",
+  "UZ" => "Unirez",
+  "VE" => "VIP",
+  "WC" => "World Class",
+  "WM" => "Westmark Hotels",
+  "WY" => "Wyndham Hotels",
+  "YX" => "Synxis",
+);
+
+## HRS's
+%AC = (
+  "ACCHN" => "Active Hotels",
+);
+
+%AX = (
+  "FSCHN" => "Four Seasons and Regent",
+  "LZCHN" => "Loews",
+  "NOCHN" => "New Otani",
+);
+
+%BW = (
+  "BWCHN" => "Best Western",
+);
+
+%C3 = (
+  "C3CHN" => "Cheapestdeals",
+);
+
+
+%CD = (
+  "CDCHN" => "Concorde",
+);
+
+%CH = (
+  "CHCHN" => "Choice",
+);
+
+%DE = (
+  "DECHN" => "Delta",
+);
+
+%DW = (
+  "DWCHN" => "Disney",
+);
+
+%FE = (
+  "FECHN" => "Forte",
+);
+
+%GR = (
+  "GRCHN" => "Global Resource",
+  "IQCHN" => "Scan Res",
+  "MTCHN" => "Microtel",
+  "BICHN" => "Best Inns",
+);
+
+%HC = (
+  "HCCHN" => "Hotel Switch",
+);
+
+%HS = (
+  "MQCHN" => "AmeriHost",
+  "DICHN" => "Days Inn",
+  "HJCHN" => "Howard Johnson",
+  "KGCHN" => "Knights Inn",
+  "RACHN" => "Ramada",
+  "SECHN" => "Super Eight",
+  "TLCHN" => "Travelodge",
+);
+
+%HH = (
+  "HHCHN" => "Hilton",
+);
+
+%HI = (
+  "HICHN" => "Holiday Inn",
+);
+
+%HK = (
+  "HKCHN" => "Hotkey",
+);
+
+%HY = (
+  "HYCHN" => "Hyatt",
+);
+
+%IC = (
+  "ICCHN" => "InterContinental",
+);
+
+%ID = (
+  "IDCHN" => "Indecorp",
+);
+
+%KC = (
+  "KCCHN" => "Kimpton",
+);
+
+#%LS = (
+#  "LSCHN" => "Las Vegas Travel",
+#);
+
+%LM = (
+  "LMCHN" => "Lexington",
+);
+
+%LQ = (
+  "LQCHN" => "La Quinta",
+);
+
+%MC = (
+  "MCCHN" => "Marriott",
+);
+
+%MQ = (
+  "MQCHN" => "AmeriHost",
+);
+
+%OC = (
+  "OCCHN" => "Hotel Okura",
+);
+
+%OM = (
+  "OMCHN" => "Omni Hotels",
+);
+
+%PR = (
+  "PRCHN" => "Promus",
+);
+
+%RF = (
+  "RFCHN" => "Red Roof",
+);
+
+%TA = (
+  "TACHN" => "Reserv Hotels",
+);
+
+%RX = (
+  "RXCHN" => "Ring Hotels",
+);
+
+%SI = (
+  "SICHN" => "ITT Sheraton",
+);
+
+%SM = (
+  "SMCHN" => "Sol Melia",
+);
+
+%PH = (
+  "PHCHN" => "Preferred Hotels",
+);
+
+%QM = (
+  "QMCHN" => "Queens Moat",
+);
+
+%TL = (
+  "TLCHN" => "Travelodge",
+);
+
+%TI = (
+  "TICHN" => "Thistle",
+);
+
+%UE = (
+  "UECHN" => "Universe",
+);
+
+%UI = (
+  "UICHN" => "Utell",
+);
+
+%UZ = (
+  "UZCHN" => "Unirez",
+);
+
+%VE = (
+  "VECHN" => "VIP",
+);
+
+%WC = (
+  "WCCHN" => "World Class",
+);
+
+%WI = (
+  "WICHN" => "Westin",
+);
+
+%WM = (
+  "WMCHN" => "Westmark",
+);
+
+%WY = (
+  "WYCHN" => "Wyndham",
+);
+
+%YX = (
+  "YXCHN" => "Synxis",
+);
+
+
+## SUBCHAINS
+%ACCHN = (
+  "ACSUB" => "",
+);
+
+%BICHN = (
+  "BISUB" => "",
+);
+
+%BWCHN = (
+  "BWSUB" => "",
+);
+
+%C3CHN = (
+  "C3SUB" => "",
+);
+
+%CDCHN = (
+  "CDSUB" => "",
+);
+
+%CHCHN = (
+  "CHSUB" => "",
+  "CRSUB" => "",
+  "CISUB" => "",
+  "CZSUB" => "",
+  "EOSUB" => "",
+  "FWSUB" => "",
+  "FZSUB" => "",
+  "MZSUB" => "",
+  "QISUB" => "",
+  "RISUB" => "",
+  "RYSUB" => "",
+  "SZSUB" => "",
+);
+
+%DECHN = (
+  "DESUB" => "",
+  "FASUB" => "",
+);
+
+%DICHN = (
+  "DISUB" => "",
+);
+
+%DWCHN = (
+  "DWSUB" => "",
+);
+
+%FECHN = (
+  "FESUB" => "",
+);
+
+%FSCHN = (
+  "FSSUB" => "",
+  "RESUB" => "",
+);
+
+%GRCHN = (
+  "GRSUB" => "",
+);
+
+%HHCHN = (
+  "HHSUB" => "",
+  "HLSUB" => "",
+);
+
+%HICHN = (
+  "HISUB" => "",
+  "CPSUB" => "",
+  "YZSUB" => "",
+  "SPSUB" => "",
+);
+
+%HJCHN = (
+  "HJSUB" => "",
+  "WGSUB" => "",
+);
+
+%KGCHN = (
+  "KGSUB" => "",
+  "XHSUB" => "",
+);
+
+%HCCHN = (
+  "HCSUB" => "",
+);
+
+%HKCHN = (
+  "HKSUB" => "",
+  "FFSUB" => "",
+  "KRSUB" => "",
+  "PBSUB" => "",
+  "RMSUB" => "",
+  "ROSUB" => "",
+);
+
+%HYCHN = (
+  "BHSUB" => "",
+  "HYSUB" => "",
+  "LTSUB" => "",
+);
+
+%ICCHN = (
+  "ICSUB" => "",
+);
+
+%IDCHN = (
+  "IDSUB" => "",
+  "WRSUB" => "",
+  "XLSUB" => "",
+  "PHSUB" => "",
+);
+
+%KCCHN = (
+  "KCSUB" => "",
+);
+
+%IQCHN = (
+  "IQSUB" => "",
+  "YHSUB" => "",
+);
+
+#%LSCHN = (
+#  "LSSUB" => "",
+#);
+
+%LMCHN = (
+  "STSUB" => "",
+  "AASUB" => "",
+  "AHSUB" => "",
+  "BUSUB" => "",
+  "CESUB" => "",
+  "CJSUB" => "",
+  "DSSUB" => "",
+  "EASUB" => "",
+  "FHSUB" => "",
+  "FTSUB" => "",
+  "GDSUB" => "",
+  "GGSUB" => "",
+  "GOSUB" => "",
+  "HVSUB" => "",
+  "HTSUB" => "",
+  "JVSUB" => "",
+  "KHSUB" => "",
+  "SBSUB" => "",
+  "LMSUB" => "",
+);
+
+%LQCHN = (
+  "LQSUB" => "",
+);
+
+%LZCHN = (
+  "LZSUB" => "",
+);
+
+%MCCHN = (
+  "BRSUB" => "",
+  "NRSUB" => "",
+  "MBSUB" => "",
+  "MCSUB" => "",
+#  "BRSUB" => "",
+  "CYSUB" => "",
+  "RCSUB" => "",
+  "RZSUB" => "",
+  "FISUB" => "",
+  "FNSUB" => "",
+  "ETSUB" => "",
+  "XVSUB" => "",
+  "TOSUB" => "",
+  "UKSUB" => "",
+);
+
+%MTCHN = (
+  "MTSUB" => "",
+);
+
+%MQCHN= (
+  "MQSUB" => "",
+);
+
+%NOCHN = (
+  "NOSUB" => "",
+  "AJSUB" => "",
+  "WBSUB" => "",
+  "BESUB" => "",
+  "DASUB" => "",
+  "DNSUB" => "",
+  "DRSUB" => "",
+  "DVSUB" => "",
+  "JPSUB" => "",
+  "LWSUB" => "",
+  "MUSUB" => "",
+  "NKSUB" => "",
+  "OGSUB" => "",
+  "PKSUB" => "",
+  "QCSUB" => "",
+  "RRSUB" => "",
+  "SGSUB" => "",
+  "TPSUB" => "",
+  "VYSUB" => "",
+  "WLSUB" => "",
+  "YSSUB" => "",
+);
+
+%OCCHN = (
+  "OCSUB" => "",
+);
+
+%OMCHN = (
+  "OMSUB" => "",
+);
+
+%PHCHN = (
+  "APSUB" => "",
+  "KISUB" => "",
+  "PFSUB" => "",
+  "MKSUB" => "",
+  "MOSUB" => "",
+  "OBSUB" => "",
+  "SLSUB" => "",
+  "TXSUB" => "",
+);
+
+%PRCHN = (
+  "RLSUB" => "",
+  "DTSUB" => "",
+  "ESSUB" => "",
+  "HGSUB" => "",
+  "HXSUB" => "",
+);
+
+%QMCHN = (
+  "QMSUB" => "",
+  "HMSUB" => "",
+);
+
+%RACHN = (
+  "RASUB" => "",
+);
+
+%RFCHN = (
+  "RFSUB" => "",
+  "MXSUB" => "",
+);
+
+%TACHN = (
+  "TASUB" => "",
+  "RBSUB" => "",
+);
+
+%RXCHN = (
+  "RXSUB" => "",
+);
+
+%SECHN = (
+  "SESUB" => "",
+);
+
+%SICHN = (
+  "SISUB" => "",
+  "GXSUB" => "",
+  "WISUB" => "",
+  "WHSUB" => "",
+);
+
+%SMCHN = (
+  "SMSUB" => "",
+  "MESUB" => "",
+);
+
+%TLCHN = (
+  "TLSUB" => "",
+);
+
+%TICHN = (
+  "TISUB" => "",
+);
+
+%UECHN = (
+  "UESUB" => "",
+);
+
+%UICHN = (
+  "UISUB" => "",
+  "ANSUB" => "",
+  "AZSUB" => "",
+  "CMSUB" => "",
+  "GMSUB" => "",
+  "GTSUB" => "",
+  "JDSUB" => "",
+  "LVSUB" => "",
+  "MHSUB" => "",
+  "MRSUB" => "",
+  "NFSUB" => "",
+  "PGSUB" => "",
+  "PJSUB" => "",
+  "RESUB" => "",
+  "RHSUB" => "",
+  "SFSUB" => "",
+  "SHSUB" => "",
+  "TJSUB" => "",
+  "UCSUB" => "",
+  "WKSUB" => "",
+  "YRSUB" => "",
+);
+
+%UZCHN = (
+  "UZSUB" => "",
+  "IPSUB" => "",
+  "KLSUB" => "",
+  "JUSUB" => "",
+  "SJSUB" => "",
+  "RQSUB" => "",
+  "SCSUB" => "",
+  "MU2SUB" => "",
+  "USSUB" => "",
+);
+
+%VECHN = (
+  "VESUB" => "",
+  "YOSUB" => "",
+);
+
+%WCCHN = (
+  "WCSUB" => "",
+  "MLSUB" => "",
+);
+
+%WMCHN = (
+  "WMSUB" => "",
+);
+
+%WYCHN = (
+  "GHSUB" => "",
+  "WYSUB" => "",
+);
+
+%YXCHN = (
+  "YXSUB" => "",
+);
+
+## List of things we don't want printed
+$noprint = "ACCHN ACSUB BWCHN BWSUB LHSUB SOSUB CHCHN CRSUB RYSUB FSSUB RESUB 
+            LHSUB C3CHN C3SUB
+            RYSUB DWCHN DWSUB FECHN FESUB DISUB MQSUB RASUB SESUB TLSUB SICHN
+            HCCHN HCSUB HHCHN HKCHN HYCHN ROSUB ICCHN IQCHN LMCHN LQCHN 
+	    LQSUB HICHN MCCHN FISUB OCCHN OCSUB OMCHN OMSUB PHCHN PRCHN QMCHN 
+	    RFCHN ICSUB SMCHN MESUB SMSUB UICHN WMCHN WMSUB WYCHN NOCHN GRSUB
+            TICHN TISUB CDCHN CDSUB LZSUB SNSUB MTSUB BISUB KCCHN KCSUB DECHN 
+	    UECHN UESUB RXCHN RXSUB TACHN UZCHN VECHN WCCHN YXCHN YXSUB IDCHN";
+
+## process command line arguments
+$temp = join($", @ARGV);
+@cmdline = split /-/, $temp;
+foreach $cmd (@cmdline) {
+  ## -m Month/Year
+  if ($cmd =~ /^m\s+(\d+)\/(\d+)/) {
+    $month      = $1;
+    $year       = $2;
+    $prev_month = $month - 1 < 1 ? $month + 11 : $month - 1;
+    $prev_year  = $year - 1 < 0 ? 99 : $year - 1;
+    $month      = numfix($month);
+    $year       = numfix($year);
+    $prev_month = numfix($prev_month);
+    $prev_year  = numfix($prev_year);
+    # Assumes 2000's. Will break in 2100.
+    $prev_dir   = "20" . $prev_year;
+  }
+  ## -v Verbose
+  if ($cmd =~ /^v/) {
+    $VERBOSE = 1;
+  }
+}
+
+$VERBOSE && print "Command Line Option list: @ARGV\n";
+$VERBOSE && print "Month/Prev Month entered: $month $prev_month\n";
+$VERBOSE && print "Year/Prev Year entered:   $year $prev_year\n";
+
+## process options
+ # no month/year
+if (!$month || !$year) {
+  print "Error: no month/year specified\n$usage\n";
+  exit 1;
+}
+
+sub get_em {
+  my (%list) = @_;
+
+  foreach (keys %list) {
+    foreach $chn (keys %$_) {
+      foreach $sch (keys %$chn) {
+        $$sch{$m}{$y}{type_a_net_bookings} = 0;
+        for ($i = 0; $i < 3; $i++) {
+
+          $m = $i == 1 ? $prev_month : $month;
+          $y = $i == 2 ? $prev_year  : $year;
+
+	  ($schtmp) = $sch =~ /(.+)SUB/; 
+
+	  $hrs = "hrs2";
+	  if ($i == 1 || $i == 2) {
+            $filename = "$report_dir/$hrs/$prev_dir/$y$m/$schtmp$m$y.bil";
+	  }
+	  else {
+            $filename = "$report_dir/$hrs/$schtmp$m$y.bil";
+	  }
+          $filename =~ tr/A-Z/a-z/; 
+          if (-e $filename) {
+	    &get_data($filename, $m, $y, $_, $chn, $sch, %list);
+	  } #end if (-e $filename)
+          else {
+	    $hrs = "hrs";
+	    if ($i == 1 || $i == 2) {
+              $filename = "$report_dir/$hrs/$prev_dir/$y$m/$schtmp$m$y.bil";
+	    }
+	    else {
+              $filename = "$report_dir/$hrs/$schtmp$m$y.bil";
+	    }
+            $filename =~ tr/A-Z/a-z/; 
+	    if (-e $filename) {
+	      &get_data($filename, $m, $y, $_, $chn, $sch, %list);
+	    }
+	  } #end else
+        } #end for ($i = 0; $i < 3; $i++)
+      } #end foreach $sch (keys %$chn) {
+    } #end foreach $chn (keys %$_)
+  } #end foreach (keys %list)
+} #end sub get_em
+
+sub get_data {
+  my ($filename, $m, $y, $hrs, $chn, $sch, %list) = @_;
+
+  open IFP, $filename;
+
+  while ($bil_sum = <IFP>) {
+    if ($bil_sum =~ /Total Type A Net Bookings\s+(\d+)/) {
+      $$sch{$m}{$y}{type_a_net_bookings} = $1;
+      $$sch{$m}{$y}{net_bookings} += $$sch{$m}{$y}{type_a_net_bookings};
+      $$chn{$m}{$y}{type_a_net_bookings} += $$sch{$m}{$y}{type_a_net_bookings};
+      $$chn{$m}{$y}{net_bookings} += $$sch{$m}{$y}{type_a_net_bookings};
+      $$hrs{$m}{$y}{type_a_net_bookings} += $$sch{$m}{$y}{type_a_net_bookings};
+      $$hrs{$m}{$y}{net_bookings} += $$sch{$m}{$y}{type_a_net_bookings};
+    }
+    elsif ($bil_sum =~ /Total Type A Net Bookings\s+(-\d+)/) {
+      $$sch{$m}{$y}{type_a_net_bookings} = $1;
+      $$sch{$m}{$y}{net_bookings} += $$sch{$m}{$y}{type_a_net_bookings};
+      $$chn{$m}{$y}{type_a_net_bookings} += $$sch{$m}{$y}{type_a_net_bookings};
+      $$chn{$m}{$y}{net_bookings} += $$sch{$m}{$y}{type_a_net_bookings};
+      $$hrs{$m}{$y}{type_a_net_bookings} += $$sch{$m}{$y}{type_a_net_bookings};
+      $$hrs{$m}{$y}{net_bookings} += $$sch{$m}{$y}{type_a_net_bookings};
+    }
+    if ($bil_sum =~ /Total Type B Net Bookings\s+(\d+)/) {
+      $$sch{$m}{$y}{type_b_net_bookings} = $1;
+      $$sch{$m}{$y}{net_bookings} += $$sch{$m}{$y}{type_b_net_bookings};
+      $$chn{$m}{$y}{type_b_net_bookings} += $$sch{$m}{$y}{type_b_net_bookings};
+      $$chn{$m}{$y}{net_bookings} += $$sch{$m}{$y}{type_b_net_bookings};
+      $$hrs{$m}{$y}{type_b_net_bookings} += $$sch{$m}{$y}{type_b_net_bookings};
+      $$hrs{$m}{$y}{net_bookings} += $$sch{$m}{$y}{type_b_net_bookings};
+    }
+    elsif ($bil_sum =~ /Total Type B Net Bookings\s+(-\d+)/) {
+      $$sch{$m}{$y}{type_b_net_bookings} = $1;
+      $$sch{$m}{$y}{net_bookings} += $$sch{$m}{$y}{type_b_net_bookings};
+      $$chn{$m}{$y}{type_b_net_bookings} += $$sch{$m}{$y}{type_b_net_bookings};
+      $$chn{$m}{$y}{net_bookings} += $$sch{$m}{$y}{type_b_net_bookings};
+      $$hrs{$m}{$y}{type_b_net_bookings} += $$sch{$m}{$y}{type_b_net_bookings};
+      $$hrs{$m}{$y}{net_bookings} += $$sch{$m}{$y}{type_b_net_bookings};
+    }
+    if ($bil_sum =~ /Total Status Modifications\s+(\d+)/) {
+      $$sch{$m}{$y}{status_mods} = $1;
+      $$chn{$m}{$y}{status_mods} += $$sch{$m}{$y}{status_mods};
+      $$hrs{$m}{$y}{status_mods} += $$sch{$m}{$y}{status_mods};
+    }
+    elsif ($bil_sum =~ /Total Status Modifications\s+(\d+)/) {
+      $$sch{$m}{$y}{status_mods} = $1;
+      $$chn{$m}{$y}{status_mods} += $$sch{$m}{$y}{status_mods};
+      $$hrs{$m}{$y}{status_mods} += $$sch{$m}{$y}{status_mods};
+    }
+  } #end while ($bil_sum = <IFP>)
+
+  close IFP;
+}
+
+sub print_em {
+  my (%list) = @_;
+
+  foreach (sort keys %list) {
+    if ($_ !~ /^\d/) {
+      printf ONE "%s %d %d %d %d %d %d\n",
+        $_,
+        $$_{$month}{$year}{type_a_net_bookings} == 0 ? 0 :
+          $$_{$month}{$year}{type_a_net_bookings},
+        $$_{$month}{$year}{type_b_net_bookings} == 0 ? 0 :
+          $$_{$month}{$year}{type_b_net_bookings},
+        $$_{$month}{$year}{net_bookings} == 0 ? 0 :
+          $$_{$month}{$year}{net_bookings},
+        $$_{$month}{$year}{status_mods} == 0 ? 0 :
+          $$_{$month}{$year}{status_mods},
+        $$_{$month}{$prev_year}{net_bookings} == 0 ? 0 :
+          $$_{$month}{$prev_year}{net_bookings},
+        $$_{$month}{$prev_year}{status_mods} == 0 ? 0 :
+          $$_{$month}{$prev_year}{status_mods};
+
+      foreach $chn (sort keys %$_) {
+        if ($chn !~ /^\d+/) {
+        if ($noprint !~ /$chn\s/) {
+	  printf ONE "%s %d %d %d %d %d %d\n",
+	    $chn,
+	    $$chn{$month}{$year}{type_a_net_bookings} == 0 ? 0 :
+	      $$chn{$month}{$year}{type_a_net_bookings},
+	    $$chn{$month}{$year}{type_b_net_bookings} == 0 ? 0 :
+	      $$chn{$month}{$year}{type_b_net_bookings},
+	    $$chn{$month}{$year}{net_bookings} == 0 ? 0 :
+	      $$chn{$month}{$year}{net_bookings},
+	    $$chn{$month}{$year}{status_mods} == 0 ? 0 :
+	      $$chn{$month}{$year}{status_mods},
+            $$chn{$month}{$prev_year}{net_bookings} == 0 ? 0 :
+              $$chn{$month}{$prev_year}{net_bookings},
+            $$chn{$month}{$prev_year}{status_mods} == 0 ? 0 :
+              $$chn{$month}{$prev_year}{status_mods};}
+
+          foreach $sub (sort keys %$chn) {
+	    if ($sub !~ /^\d+/) {
+            if ($noprint !~ /$sub\s/) {
+	      printf ONE "%s %d %d %d %d %d %d\n",
+		$sub,
+	        $$sub{$month}{$year}{type_a_net_bookings} == 0 ? 0 :
+		  $$sub{$month}{$year}{type_a_net_bookings},
+	        $$sub{$month}{$year}{type_b_net_bookings} == 0 ? 0 :
+	          $$sub{$month}{$year}{type_b_net_bookings},
+	        $$sub{$month}{$year}{net_bookings} == 0 ? 0 :
+	          $$sub{$month}{$year}{net_bookings},
+	        $$sub{$month}{$year}{status_mods} == 0 ? 0 :
+	          $$sub{$month}{$year}{status_mods},
+                $$sub{$month}{$prev_year}{net_bookings} == 0 ? 0 :
+                  $$sub{$month}{$prev_year}{net_bookings},
+                $$sub{$month}{$prev_year}{status_mods} == 0 ? 0 :
+                  $$sub{$month}{$prev_year}{status_mods};
+
+	    }
+	  }
+        }
+      }
+    }
+    }
+  } #end foreach (sort keys %list) {
+}
+
+## begin main function
+
+open OFP, ">-";
+open ONE, ">hrsfile.txt";
+
+&get_em (%HRSLIST);
+
+&print_em(%HRSLIST);
+
+close OFP;
+close ONE;
+
+## end main function

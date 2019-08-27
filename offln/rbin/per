@@ -1,0 +1,11 @@
+#! /bin/sh
+
+if [ -z "$1" ]
+then
+	TODAY=`env TZ=GMT0 date '+%m%d%H'`
+else
+	TODAY=$1
+fi
+
+echo $TODAY
+ulgscan -f ${HOME}/bin/per_ALIAS per${TODAY}.lg

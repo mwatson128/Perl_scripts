@@ -1,0 +1,104 @@
+#!/bin/sh
+# (]$[) %M%:%I% | CDATE=%G% %U%
+
+. /reports/monthly/bin/environment
+
+#Usage: matrix2qpw -m mmyy
+#      -m mmyy, month and year
+#      extracts HRS and GDS billing information for import to qpw
+#      output: stdout
+
+# usage function
+usage() {
+  echo "Usage: "`basename $0`" -m mmyy"
+  echo "      -m mmyy, month and year"
+  echo "      extracts HRS and GDS billing information for import to qpw"
+  echo "      output: stdout"
+} # end of function
+
+# validate command line 
+mflag=0
+while getopts "m:" option 
+do
+  case "$option" 
+    in
+      m) m_arg=$OPTARG 
+         mflag=1;;
+     \?) usage 
+	 exit 1;;
+     \*) usage  
+	 exit;;
+    esac
+done 
+
+if test $m_arg -eq $DS
+then
+  for FILE in /reports/monthly/billing/*${m_arg}.bil
+  do 
+    awk '{if ($1== "Airline" && $4 != "ALL") print FILENAME}' $FILE >>/tmp/gds
+    awk '{if ($1== "Hotel" && $5 != "ALL") print FILENAME}' $FILE >>/tmp/hrs 
+  done
+
+  for FILE in /reports/monthly/billing/hrs/*${m_arg}.bil
+  do 
+    awk '{if ($1== "Airline" && $4 != "ALL") print FILENAME}' $FILE >>/tmp/gds
+    awk '{if ($1== "Hotel" && $5 != "ALL") print FILENAME}' $FILE >>/tmp/hrs 
+  done
+
+  for FILE in /reports/monthly/billing/gds/*${m_arg}.bil
+  do 
+    awk '{if ($1== "Airline" && $4 != "ALL") print FILENAME}' $FILE >>/tmp/gds
+    awk '{if ($1== "Hotel" && $5 != "ALL") print FILENAME}' $FILE >>/tmp/hrs 
+  done
+
+  for FILE in /reports/monthly/billing/hrsgds/*${m_arg}.bil
+  do 
+    awk '{if ($1== "Airline" && $4 != "ALL") print FILENAME}' $FILE >>/tmp/gds
+    awk '{if ($1== "Hotel" && $5 != "ALL") print FILENAME}' $FILE >>/tmp/hrs 
+  done
+
+else
+  for FILE in /reports/monthly/billing/${m_arg}/*${m_arg}.bil
+  do 
+    awk '{if ($1== "Airline" && $4 != "ALL") print FILENAME}' $FILE >>/tmp/gds
+    awk '{if ($1== "Hotel" && $5 != "ALL") print FILENAME}' $FILE >>/tmp/hrs 
+  done
+
+  for FILE in /reports/monthly/billing/hrs/${m_arg}/*${m_arg}.bil
+  do 
+    awk '{if ($1== "Airline" && $4 != "ALL") print FILENAME}' $FILE >>/tmp/gds
+    awk '{if ($1== "Hotel" && $5 != "ALL") print FILENAME}' $FILE >>/tmp/hrs 
+  done
+
+  for FILE in /reports/monthly/billing/gds/${m_arg}/*${m_arg}.bil
+  do 
+    awk '{if ($1== "Airline" && $4 != "ALL") print FILENAME}' $FILE >>/tmp/gds
+    awk '{if ($1== "Hotel" && $5 != "ALL") print FILENAME}' $FILE >>/tmp/hrs 
+  done
+
+  for FILE in /reports/monthly/billing/hrsgds/${m_arg}/*${m_arg}.bil
+  do 
+    awk '{if ($1== "Airline" && $4 != "ALL") print FILENAME}' $FILE >>/tmp/gds
+    awk '{if ($1== "Hotel" && $5 != "ALL") print FILENAME}' $FILE >>/tmp/hrs 
+  done
+
+fi
+
+nice awk ' BEGIN {printf("\"GDS\"        \"TYPE A\"        \"TYPE B\"     \"STAT MODS\"\n")}
+{if ($1== "Total" &&  $2 == "Type" && $3 == "A") 
+	  printf("\"%2s\"|%15d|", substr(FILENAME,26,2), $6) 
+        if ($1 =="Total" &&  $2 == "Type" && $3 == "B")
+	  printf("%15d|", $6) 
+        if ($1 =="Total" &&  $2== "Status" && $3 == "Modifications")
+	  printf("%15d|\n", $4)} ' ` awk '{print $0}' /tmp/gds ` >$MDIR/matrix2${m_arg}.prn
+
+nice awk ' BEGIN {printf("\n\n\"HRS\"        \"TYPE A\"        \"TYPE B\"      \"STAT MODS\"\n")}
+{if ($1== "Total" &&  $2 == "Type" && $3 == "A") 
+	  printf("\"%2s\"|%15d|", substr(FILENAME,26,2), $6)
+        if ($1 =="Total" &&  $2 == "Type" && $3 == "B")
+	  printf("%15d|", $6) 
+        if ($1 =="Total" &&  $2== "Status" && $3 == "Modifications")
+	  printf("%15d|\n", $4)} ' ` awk '{print $0}' /tmp/hrs ` >>$MDIR/matrix2${m_arg}.prn
+rm /tmp/gds
+rm /tmp/hrs
+

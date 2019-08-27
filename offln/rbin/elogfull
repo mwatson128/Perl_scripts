@@ -1,0 +1,12 @@
+#! /bin/sh
+
+if [ -z "$1" ]
+then
+  TODAY=`date '+%m%d%y'`
+else
+  TODAY="$1"
+fi
+
+cat /offln/daily/rpt$TODAY.err > /tmp/tmp.err
+ulgscan -f /tmp/tmp.err /offln/daily/rpt$TODAY.lg > elogfull.out
+rm /tmp/tmp.err

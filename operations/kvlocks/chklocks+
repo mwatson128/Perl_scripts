@@ -1,0 +1,132 @@
+#!/usr/bin/perl
+#
+# Designed to run hourly, printing a cycle start line and then 119
+# status lines.  Log file named according to date.
+#
+# THIS SCRIPT REQUIRES PERL.
+#
+# (]$[) %M%:%I% | CDATE=%G% %U%
+#
+
+# declare and/or initialize subroutines and variables.
+sub time_and_logdir;
+sub barf;
+sub print_log;
+my ($logdir, $i, $date, $mailcmd, $filename, @input, $line, @word, $tm,
+    $elapse, $diffpkt, $rate, $collper, $username, $sysname);
+my $mailaddr = 'charlest@thisco.com';
+my $logprefix = "netstat.";
+my $sleeptime = 30;
+my $not_first_time = "";
+
+# get system and user names, do system-dependent things.
+my $sysname = `uname -n`;
+chomp $sysname;
+$username = `/usr/ucb/whoami`;
+chomp $username;
+if ($sysname =~ /tpe./) {
+  $mailcmd = "/usr/ucb/mail";
+  $logpath = "/prod/m2/usw/perf/system/kv" if ($username =~ /^usw$/);
+}
+else {
+  $mailcmd = "/usr/bin/mailx";
+  $logpath = "/usr2/usw/perf/kv if ($username =~ /^usw$/)";
+}
+
+if ($username =~ /^qa$/) {
+  $logpath = "/qa/chknet_data";
+}
+elsif ($username =~ /^qa2$/) {
+  $logpath = "/qa2/chknet_data";
+}
+elsif ($username !~ /^(usw)|(prod_sup)$/) {
+  $logpath = "/home/$username/chknet_data";
+}
+ 
+# loop 120 times.  this is an hour if sleep time is 30 seconds.
+for ($i = 120; 0 < $i; $i--) {
+
+# set time variables, handle log paths and such
+  time_and_logdir();
+
+# get netstat info.
+  @input = `netstat -i 2>&1`;
+  foreach $line (@input) {
+    @word = split(' ', $line);
+    if ($word[3] =~ /$sysname/o) {
+
+# calculate and log
+      if ($not_first_time) {
+        $elapse = $tm - $intfaces{$word[3]}{seconds};
+        $diffpkt = $word[4] + $word[6] - $intfaces{$word[3]}{packets};
+        $rate = $diffpkt / $elapse;
+        $collper = 100 * ($word[8] - $intfaces{$word[3]}{colls}) / $diffpkt;
+        open(NSTLOG, ">> $filename") or barf "Can't open $filename: $!";
+        printf(NSTLOG "%s | %.2f%% coll | %.2f pkt/sec <%s>\n",
+               $date, $collper, $rate, $word[3]);
+        close(NSTLOG);
+      } # end of IF
+
+# store data for next time
+#print "$word[3]:  pkts=", $word[4] + $word[6], "  colls=$word[8]  tm=$tm\n";
+      $intfaces{$word[3]}{packets} = $word[4] + $word[6];
+      $intfaces{$word[3]}{colls} = $word[8];
+      $intfaces{$word[3]}{seconds} = $tm;
+    }  # end of IF
+  }  # end of FOREACH
+
+# if this is the first loop, it isn't anymore
+  if (!$not_first_time) {
+    $not_first_time = "TRUE";
+    open(NSTLOG, ">> $filename") or barf "Can't open $filename: $!";
+    print NSTLOG "$date + ---- new log cycle ----\n";
+    close(NSTLOG);
+  } # end of IF
+
+# doze until next loop
+  sleep($sleeptime);
+} # end FOR
+
+# subroutine to set time variables and go to log directory
+sub time_and_logdir {
+# time/date -- format for printing
+  $tm = time;
+  ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = gmtime($tm);
+  $date = sprintf("%02d/%02d/%04d %02d:%02d:%02d", $mon + 1, $mday,
+                     $year + 1900, $hour, $min, $sec);
+
+# go to correct dir, determine file name.  done each time through loop,
+# so it'll adapt if day/month/year changes while running.
+  if (! -d $logpath) {
+    `mkdir $logpath 2>&1`;
+    `chmod 775 $logpath 2>&1`;
+  }
+  chdir $logpath or barf "Can't access $logpath -- $!";
+  $logdir = sprintf("%02d%02d", $mon + 1, $year);
+  if (! -d $logdir) {
+    `mkdir $logdir 2>&1`;
+    `chmod 775 $logdir 2>&1`;
+  }
+  chdir $logdir or barf "Can't access $logdir -- $!";
+  $filename = sprintf("%s%02d%02d%02d", $logprefix, $mon + 1, $mday, $year);
+}
+
+# subroutine to send fatal error msgs through email
+sub barf {
+  my ($barfmsg, @stuff) = @_;
+  open MAILPIPE, "| $mailcmd -s 'chknet error message' $mailaddr"
+    or die "Error opening mail pipe: $!";
+  print MAILPIPE "$date\n";
+  print MAILPIPE $barfmsg;
+  print MAILPIPE "\nHash dump:\n";
+  foreach $record (keys %intfaces) {
+    print MAILPIPE "    $record { ";
+    foreach $rkey (keys %{$intfaces{$record}}) {
+      print MAILPIPE "$rkey=$intfaces{$record}{$rkey} ";
+    } # end FOREACH
+    print MAILPIPE "}\n";
+  } # end FOREACH
+  close MAILPIPE or die "Error closing mail pipe: $!";
+  exit 1;
+} # end SUB
+

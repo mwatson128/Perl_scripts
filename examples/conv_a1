@@ -1,0 +1,16 @@
+#!/bin/perl
+
+@fle = `cat $ARGV[0]`;
+
+foreach $ln (@fle) {
+  $ln =~ s/\\1c/'/g;
+  $ln =~ s/\\1d/+/g;
+  $ln =~ s/\\1f/:/g;
+  print $ln;
+}
+
+#cat tmp | \
+#sed s/\\1c/\'/g | \
+#sed s/\\1d/\+/g | \
+#sed s/\\1f/\:/g > tmp.conv
+

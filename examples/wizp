@@ -1,0 +1,114 @@
+#!/bin/perl 
+###########################################################################
+#
+# This will eventually be an AMF parser for breaking an AMF message down
+# into it segments and fields.
+#
+###########################################################################
+
+use Getopt::Std;
+
+# Usage statement.
+$us = "Usage: amf_parse.pl [-o format] amf_message_file 
+   -o format = reports output ('ascii' produces ASCII output, 
+      'latex' yeilds LaTeX output, 'html' yeilds HTML, etc.)  
+      [default is ASCII]\n";
+
+$errors = getopts('ho:n');
+
+# help option. Print usage and exit.
+if ($opt_h) {
+  print $us;
+  exit;
+}
+
+# Define the output format.
+if ( !$opt_o ) {
+  $outformat = "ascii";
+}
+elsif ( $opt_o eq "html" ) {
+  $outformat = "html";
+}
+elsif ( $opt_o eq "csv" ) {
+  $outformat = "csv";
+}
+
+$print_numbers = 0;
+if ($opt_n) {
+  $print_numbers = 1;
+}
+
+if (defined $ARGV[0]) {
+  if (-f $ARGV[0]) {
+    $INFILE = "< $ARGV[0]";
+  }
+  else {
+    print "$ARGV[0], not a regular file.\n";
+    print $us;
+    exit;
+  }
+}
+else {
+  print $us;
+  exit;
+}
+
+open INFILE or die "Can't open file $INFILE";
+
+$line_ind = 0;
+$msg_array = "";
+
+while (<INFILE>) {
+  
+  next if /^#|^$/;
+  next if /plcf/ || /gwif/ || /ret/;
+  chomp;
+  s/\\$//;
+  $msg_array .= $_;
+}
+close INFILE;
+chomp $msg_array;
+
+#print $msg_array, "\n\n";
+
+@messages = split /\\00/, $msg_array;
+$messages = @messages;
+
+foreach $mess (@messages) {
+
+  @segments = split /\\r/, $mess;
+
+  $num_segs = @segments;
+
+  foreach $segment (@segments) {
+
+    #print "SEGMENT: $segment\n";
+
+    @args = split /-/, $segment;
+
+    $num_args = @args;
+	
+    print "    $args[0] = ";
+    $cnt = length $args[1];
+
+    printf("%3d ", $cnt) if $print_numbers;
+    for ($num = 1; $num <= $num_args; $num++) {
+      if (50 < $cnt) {
+	@chars = split //, $args[$num];
+	$i = 1;
+	foreach $l (@chars) {
+	  print($l);
+	  if (0 == $i%50) {
+	    print("\n               ");
+	  }
+	  $i++;
+	}
+      }
+      else {
+	printf("%s", $args[$num]);
+      }
+    }
+    printf("\n");
+  }
+} 
+  

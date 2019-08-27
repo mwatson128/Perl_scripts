@@ -1,0 +1,30 @@
+#!/bin/perl
+
+$ARGC = @ARGV;
+if ($ARGC) {
+  $IFP = "<./$ARGV[0]";
+  open IFP or die "Can't open input!";
+}
+else {
+  print "Usage: lt_fmt.pl file \n";
+  print "  output is to stdout.\n";
+  exit;
+}
+
+$OFP = ">./cp.out";
+open OFP or die "Can't open output!";
+
+@all_lines = <IFP>;
+
+$i = 0;
+while ($i <= 100) {
+
+  foreach $ln (@all_lines) {
+    printf OFP $ln;
+  }
+  printf OFP "\n";
+  $i++;
+}
+
+close IFP;
+close OFP;

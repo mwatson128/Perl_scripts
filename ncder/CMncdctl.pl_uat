@@ -1,0 +1,129 @@
+#! /usr/local/bin/perl
+################################################################################
+## Purpose: This is a simple utility to backup current versions running in    ##
+##          production when activated.  It audits the USW Prod boxes and      ##
+##          writes versions to a file that can be used to repopulate prod     ##
+##          if any thing should happen to remove the files there.
+##----------------------------------------------------------------------------##
+## Input  : username (mandatory parameters)                                   ##
+## Output : A config file with data and a log file with all actions/output.   ##
+##----------------------------------------------------------------------------##
+## Author : Mike Watson  (mike.watson@pegs.com)                               ##
+################################################################################
+use POSIX;
+use Time::Local;
+
+#########################################
+#----------# Initializations #----------#
+#########################################
+$| = 1;       #Turn off buffered output
+my $today   = strftime("%Y%m%d", gmtime); 
+my $date    = strftime("%A %B %d %Y %T GMT", gmtime);
+my $logfile = "logs/$today-ncdctl.log";
+my $zone = `uname -n`;
+
+# Error conditions we know of
+my $config_dnexist = "Error!  Config file empty or doesn\'t exist, EXIT";
+my $config_miss = "Error! Parameter cfg filename missing, EXIT";
+
+my $indent  = "   ";
+my $hlen    = 10;
+my $wlen    = 8;
+my $nlen    = 8;
+my %paths;
+my ($h, $p, $arg);
+my (%hosts, $list, $user, $line, @list, $config);
+my (@results, $repver, $returncode, $working, $exists);
+my ($host, $pathfile, $path, $file, $newver, $action, $repositorypath);
+chomp(my $localhost = `hostname`);
+chomp(my $wkdir = `pwd`);
+
+# Sub definitions
+sub display;
+sub dieGracefully;
+
+###########################################
+#-------------# Begin  Main #-------------#
+###########################################
+
+## Open the log file for writing
+open(LOG, ">>$logfile");
+
+## Make sure a valid config file was given on the command line
+if ($ARGV[0] ne "") {
+  $config = "$ARGV[0]";
+  ## A filename was given; now make sure it exists and is not empty
+  if ((-e $config) && (!-z $config)) {
+    ## Good, files here.
+  } 
+  else {
+    &dieGracefully($config_dnexist);
+  }
+} 
+else {
+  &dieGracefully($config_miss);
+}
+
+## Read in the config file and do ncdctl's
+open(CONFIG, "<$config");
+
+###############################################################
+## OK, all the validation stuff is done.  
+## Now for the main body of the script ##
+###############################################################
+
+## Loop through each line of config, figure out the machine, and 
+##   send the ncdctl to that machine and IP.
+while (<CONFIG>) {
+  chomp;
+  next if /^#|^$/;
+
+  # Format of the config file?
+  # machine connection command
+  ($machine, $connection, @command) = split / /;
+
+  $ncd_cmd = join(" ", @command);
+  $ncd = "/pegs/knet/knet2.2.6.24/runtime/bin/ncdctl";
+
+  ## setup the ncdctl command for this IP, this machine and this option.
+  $PACKAGE = sprintf ("ssh %s %s -r -d %s %s", 
+                     $machine, $ncd, $connection, $ncd_cmd);
+
+  ## Run ncdctl command, log result
+  display $PACKAGE;
+  $rv = system ($PACKAGE);
+  print " Return value is - $rv \n";
+
+} # End while config
+  
+## Close the log and config files
+close(LOG);
+close(CONFIG);
+exit;
+
+##################################
+## Print to screen and log file ##
+##################################
+sub display {
+  my $string = shift(@_);
+  print LOG "$string";
+  print "$string";
+}# End sub display ###############
+
+###############################################
+## An error occurred.  Print it, and a usage ##
+## statement, then close the log and exit.   ##
+###############################################
+sub dieGracefully {
+  my $string = shift(@_);
+  print LOG "$div\n";
+  &display("\n$string\n");
+  &display("\nUsage: CMBncder.pl listfile\n\n");
+  &display("Expected list file format:\n");
+  &display("HOST CONNECTION COMMAND_to_RUN\n");
+  print LOG "$div\n";
+  close(LOG);
+  exit;
+}
+
+

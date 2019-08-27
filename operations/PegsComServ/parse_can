@@ -1,0 +1,124 @@
+#!/bin/perl
+
+sub countnights {
+  local $indate, $outdate, $inday, $inmonth, $outday, $outmonth;
+  local $inyear, $outyear, $jin, $jout, $nights, %offsets;
+
+  # WARNING:  Doesn't handle leap years correctly.
+
+  $indate = shift;
+  $outdate = shift;
+
+  # separate days and months
+  if ($indate =~ /(\d+)\/(\d+)\/(\d+)/) {
+    $inmonth = $1;
+    $inday = $2;
+    $inyear = $3;
+  }
+  else {
+    return 0;
+  }
+
+  if ($outdate =~ /(\d+)\/(\d+)\/(\d+)/) {
+    $outmonth = $1;
+    $outday = $2;
+    $outyear = $3;
+  }
+  else {
+    return 0;
+  }
+
+  unless ($inday && $outday && $inmonth && $outmonth) {
+    return 0;
+  }
+
+  if ($inmonth > 12 || $outmonth > 12) {
+    return 0;
+  }
+
+  # array of offsets
+  @offsets = (0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334);
+
+  # figure out corresponding julian dates for each
+  $jin = $offsets[$inmonth - 1] + $inday;
+  $jout = $offsets[$outmonth - 1] + $outday;
+
+  # number of nights
+  $nights = $jout - $jin;
+  if ($nights < 0) {
+    $nights += 365;
+  }
+  return $nights;
+}
+
+while (<>) {
+  chomp;
+
+  @fields = split /\|/;
+
+  # clean up the fields
+  for (@fields) {
+    # trim trailing white space
+    s/^(.*?)\s*$/$1/o;
+    # print it
+    #print "item: >$_<\n";
+  }
+
+  # parse out stuff
+  $usw_chain = shift @fields;
+  print "usw_chain = $usw_chain\n";
+  $usw_pid = shift @fields;
+  print "usw_pid = $usw_pid\n";
+  $agency_id = shift @fields;
+  print "agency_id = $agency_id\n";
+  $conf_num = shift @fields;
+  print "conf_num = $conf_num\n";
+  $bkg_src = shift @fields;
+  print "bkg_src = $bkg_src\n";
+  $pnr = shift @fields;
+  print "pnr = $pnr\n";
+  $lname = shift @fields;
+  print "lname = $lname\n";
+  $fname = shift @fields;
+  print "fname = $fname\n";
+  $arr_date = shift @fields;
+  print "arr_date = $arr_date\n";
+  $dep_date = shift @fields;
+  print "dep_date = $dep_date\n";
+  $cancel_time = shift @fields;
+  print "cancel_time = $cancel_time\n";
+  $rooms = shift @fields;
+  print "rooms = $rooms\n";
+  $bk_rate = shift @fields;
+  print "bk_rate = $bk_rate\n";
+  $bk_cur = shift @fields;
+  print "bk_cur = $bk_cur\n";
+  $prop_name = shift @fields;
+  print "prop_name = $prop_name\n";
+  $addr1 = shift @fields;
+  print "addr1 = $addr1\n";
+  $addr2 = shift @fields;
+  print "addr2 = $addr2\n";
+  $city = shift @fields;
+  print "city = $city\n";
+  $state = shift @fields;
+  print "state = $state\n";
+  $postal = shift @fields;
+  print "postal = $postal\n";
+  $country = shift @fields;
+  print "country = $country\n";
+  $phone1 = shift @fields;
+  print "phone1 = $phone1\n";
+  $fax = shift @fields;
+  print "fax = $fax\n";
+  $nnt = countnights($arr_date, $dep_date);
+  if ($nnt) {
+    print "number of nights = $nnt\n";
+  }
+  else {
+    print "error counting number of nights\n";
+  }
+
+  # print line between records
+  print "----------\n";
+}

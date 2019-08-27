@@ -1,0 +1,56 @@
+#!/usr/bin/perl
+
+while ($line = <>) {
+  chomp $line;
+  next if ($line =~ /Counters for KivaNet shared memory/o);
+  next if ($line =~ /of processes ahead/o);
+  if ($line =~ /gate requests (-*\d+),  successes (-*\d+)/o) {
+    $llgatereq = $1;
+    $llgatesuc = $2;
+    next;
+  }
+  if ($line =~ /to gate:  none (-*\d+),  some (-*\d+),  spins (-*\d+)/o) {
+    $llspingatenone = $1;
+    $llspingatesome = $2;
+    $llspingatespins = $3;
+    next;
+  }
+  if ($line =~ /to release:  none (-*\d+),  some (-*\d+),  spins (-*\d+)/o) {
+    $llspinrelnone = $1;
+    $llspinrelsome = $2;
+    $llspinrelspins = $3;
+    next;
+  }
+  if ($line =~ /None required (-*\d+),  required (-*\d+),  failed (-*\d+)/o) {
+    $nonerequired = $1;
+    $required = $2;
+    $failed = $3;
+    next;
+  }
+  if ($line =~ /Iterations through backoff loop: (-*\d+)/o) {
+    $backoffloop = $1;
+    next;
+  }
+  if ($line =~ /[>=\s]*(-*\d+):\s+(-*\d+)\s+(-*\d+)/o) {
+    $procahead[$1][0] = $2;
+    $procahead[$1][1] = $3;
+    next;
+  }
+  print "$line\n";
+}
+
+print "llgatereq = $llgatereq\n";
+print "llgatesuc = $llgatesuc\n";
+print "llspingatenone = $llspingatenone\n";
+print "llspingatesome = $llspingatesome\n";
+print "llspingatespins = $llspingatespins\n";
+print "llspinrelnone = $llspinrelnone\n";
+print "llspinrelsome = $llspinrelsome\n";
+print "llspinrelspins = $llspinrelspins\n";
+print "nonerequired = $nonerequired\n";
+print "required = $required\n";
+print "failed = $failed\n";
+print "backoffloop = $backoffloop\n";
+for $i (0 .. $#procahead) {
+  print "procahead[$i] = [ $procahead[$i][0] ] [ $procahead[$i][1] ]\n";
+}

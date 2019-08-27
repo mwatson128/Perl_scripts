@@ -1,0 +1,366 @@
+#! /usr/local/bin/perl
+################################################################################
+## Purpose: This is a simple utility to automate building an install file for ##
+##          the CM group to use in installing (or backing out) config files   ##
+##          in the USW environment.  It expects as input a file containing a  ##
+##          list of files that are to be updated, and what the new version    ##
+##          will be for each file.  Also, the hosts to which the file will be ##
+##          installed must be present, with one line per host/file/version    ##
+##          combination.  The second parameter is the username that will be   ##
+##          performing all of the cvs status lookups.  Each file is checked   ##
+##          to identify the current version, and then an install config file  ##
+##          is built with all of the data in it.  This resulting file is then ##
+##          used as input to the CMinstall.pl and/or CMbackout.pl scripts.    ##
+##----------------------------------------------------------------------------##
+## Input  : filelist and username (mandatory parameters)                      ##
+## Output : A config file with data and a log file with all actions/output.   ##
+##----------------------------------------------------------------------------##
+## Author : Kevin Daniel (kevin.daniel@pegs.com)                              ##
+## Date   : August 14, 2007 - initial version                                 ##
+################################################################################
+use POSIX;
+use strict;
+use Time::Local;
+
+
+#########################################
+#----------# Initializations #----------#
+#########################################
+$| = 1; #Turn off buffered output
+my $today   = strftime("%Y%m%d", gmtime); 
+my $date    = strftime("%A %B %d %Y %T GMT", gmtime);
+my $logfile = "logs/$today-buildconfig.log";
+my $indent  = "   ";
+my $tab     = $indent x 2;
+my $header  = "ACTION   HOSTNAME    OLD       NEW       PATH/FILENAME";
+my $div     = "==================================================================="; 
+my $hlen    = 10;
+my $wlen    = 8;
+my $nlen    = 8;
+my %paths;
+my ($h, $p, $arg);
+my (%hosts, $list, $user, $line, @list, $config);
+my (@results, $repver, $returncode, $working, $exists);
+my ($host, $pathfile, $path, $file, $newver, $action, $repositorypath);
+chomp(my $localhost = `hostname`);
+chomp(my $wkdir = `pwd`);
+
+
+###########################################
+#-------------# Begin  Main #-------------#
+###########################################
+
+## Open the log file for writing
+open(LOG, ">>$logfile");
+
+## Make sure a valid list file was given on the command line
+if ($ARGV[0] ne "") {
+  ## A filename was given; now make sure it exists and is not empty
+  if ((-e $ARGV[0]) && (!-z $ARGV[0])) {
+    ## Good - the file exists and has stuff in it
+    $list = shift(@ARGV);
+  } else {
+    ## Bad - file is either empty or non-existent
+    &dieGracefully("Error!  file: '$ARGV[0]' is either empty or doesn't exist.  Exiting.");
+  }
+} else {
+  ## User forgot to pass in a list filename
+  &dieGracefully("Error!  Parameter is missing - File List filename!  Exiting.");
+}
+
+## Make sure a valid username was given on the command line
+if ($ARGV[0] ne "") {
+  $user = shift(@ARGV);
+} else {
+  ## User forgot to pass in a username
+  &dieGracefully("Error!  Parameter missing - username!  Exiting.");
+}
+
+## Build the config filename and open it
+$config = "config/$today-$user.config";
+open(CONFIG, ">$config");
+
+## Read the list file and grab all the lines from it
+chomp(@list = `cat $list`);
+
+## Validate the list contents
+foreach $line (@list) {
+  @results = split(/ /, $line);
+  $hosts{$results[0]} = 1;
+  if (scalar(@results) != 3) {
+    &dieGracefully("Error!  Invalid file list entry:\n$tab'$line'.\nIncorrect number of fields.  Exiting.");
+  }
+}
+
+## Valide that each host is reachable
+foreach $h (sort(keys(%hosts))) {
+  chomp($exists = `ping $h`);
+  if ($exists !~ /alive/) {
+    &dieGracefully("Error!  Invalid host in list: could not ping '$h'.  Exiting.");
+  }
+}
+
+
+################################################################################
+## OK, all the validation stuff is done.  Now for the main body of the script ##
+################################################################################
+## Print header info
+&display("******************************\n");
+&display("* Begin Building Config File *\n");
+&display("******************************\n");
+&display("$indent$date\n");
+&display("$indent$header\n");
+&display("$indent$div\n");
+
+## Loop through each entry from the list
+foreach $line (@list) {
+  ($host, $pathfile, $newver) = split(/ /, $line);
+  $pathfile =~ /(.+)\/(.+)/;
+  $path = $1;
+  $file = $2;
+  undef($working);
+  undef($repver);
+  undef($returncode);
+  undef($repositorypath);
+  $action = "Adding :";
+
+  ## Check the current version of this file
+  ($working,$repver,$repositorypath) = &CheckStatus($host,$path,$file);
+
+  ## Compare the versions
+  if ($working eq $newver) {
+
+    ## Double check that it does not physically exist on this host yet.
+    $exists = &CheckFile($host,$path,$file);
+
+    ## If the file does exist, and the versions are the same, raise a red flag
+    if ($exists) {
+      $returncode = "$tab-->New version ($newver) is already on host '$host'.";
+      $action = "Problem!";
+    } else {
+
+      ## The version are the same, but the file is not there; this must be a new file
+      ## that was installed and then "backed out" and we are trying to re-install it.
+      ## Reset the working version to "NF" to identify this as a new file.
+      $working = "NF";
+    }
+  } else {
+
+    ## Check to see if this is a new file
+    if ($working eq "No entry") {
+
+      ## Double check that it does not physically exist on this host yet.
+      $exists = &CheckFile($host,$path,$file);
+
+      ## If the file does exist, raise a red flag
+      if ($exists) {
+        $returncode = "$tab-->New version ($newver) is already on host '$host'.";
+        $action = "Problem!";
+      } else {
+
+        ## To be triple-sure : make sure the repository revision matches our newver
+        if ($repver eq $newver) {
+
+          ## Reset the working version to "NF" to identify this as a new file
+          $working = "NF";
+        } else {
+
+          ## We are trying to install a new file with a version that is not the most
+          ## current in the repository (probably not the version we really want)
+          $working = "N/A";
+          $returncode = "$tab-->File '$file' appears to be a new file, but is not the most recent\n" .
+                        "$tab-->version in the repository (asking for $newver, but found $repver).";
+          $action = "Problem!";
+        }
+      }
+    } else {
+
+      ## Ok, the versions are different and it is not a new file, so lets
+      ## grab an rdiff of the two versions so that we know what changed.
+      &DoDiff($host,$repositorypath,$file,$working,$newver);
+    }
+
+  } #end if working eq newver
+
+  ## Print the output for this host/file combination
+  &formattedPrint($host,$path,$file,$working,$newver,$action);
+
+  ## If a problem was detected, don't put this into the config file
+  if ($returncode) {
+    &display("$returncode\n");
+  } else {
+    ##Store this to the config file
+    print CONFIG "$host $path/$file $working $newver\n";
+  }
+
+} #end foreach list item
+  
+## Print the footer info
+&display("******************************\n");
+&display("* Config File Build Complete *\n");
+&display("******************************\n");
+
+## Close the log and config files
+close(LOG);
+close(CONFIG);
+
+print "\nFor more details, see $logfile.\n";
+exit;
+
+##################################
+## Print to screen and log file ##
+##################################
+sub display {
+  my $string = shift(@_);
+  print LOG "$string";
+  print "$string";
+}# End sub display ###############
+
+
+##############################################
+## Format the file information and print it ##
+##############################################
+sub formattedPrint {
+  my $s = " ";
+  my $h = shift(@_);
+  my $p = shift(@_);
+  my $f = shift(@_);
+  my $w = shift(@_);
+  my $n = shift(@_);
+  my $a = shift(@_);
+  my $hdiff = (length($h) < $hlen ? $hlen - length($h) : 1);
+  my $wdiff = (length($w) < $wlen ? $wlen - length($w) : 1);
+  my $ndiff = (length($n) < $nlen ? $nlen - length($n) : 1);
+  my $string  = $indent . $a . $s;
+     $string .= $h . $s x $hdiff . $s x 2;
+     $string .= $w . $s x $wdiff . $s x 2;
+     $string .= $n . $s x $ndiff . $s x 2;
+     $string .= "$p/$f";
+  &display("$string\n");
+}
+
+
+###############################################
+## An error occurred.  Print it, and a usage ##
+## statement, then close the log and exit.   ##
+###############################################
+sub dieGracefully {
+  my $string = shift(@_);
+  print LOG "$div\n";
+  &display("\n$string\n");
+  &display("\nUsage: CMBuildconfig.pl listfile username\n\n");
+  &display("Expected list file format:\n");
+  &display("HOST PATH_and_FILENAME NEWVERSION\n");
+  print LOG "$div\n";
+  close(LOG);
+  exit;
+}
+
+
+###################################################
+## Do a 'cvs rdiff' on the file to see what the  ##
+## changes are between the old and new versions. ##
+## If the host that we are checking is the local ##
+## host, ssh is not necessary.                   ##
+###################################################
+sub DoDiff {
+  my ($h,$p,$f,$w,$n) = (@_);
+  my (@findings,$line);
+
+  ## If this host is the localhost, don't use ssh
+  if ($h eq $localhost) {
+    chomp(@findings = `cvs rdiff -r$w -r$n $p/$f 2>&1`);
+    chdir($wkdir);
+  } else {
+    chomp(@findings = `ssh $user\@$h '. ./.cmprofile; date; hostname; pwd; cvs rdiff -r$w -r$n $p/$f 2>&1' 2>&1`);
+  }
+
+  ## print the output to the log file
+  print LOG "$indent----->cvs rdiff : begin output<-----\n";
+  foreach $line (@findings) {
+    if ($line =~ /removed/) {
+      &dieGracefully("Error!  Incorrect file version: '$f:$n' does not exist.  Exiting.");
+    } else {
+      print LOG "$tab$line\n";
+    }
+  }
+  print LOG "$indent----->cvs rdiff : end output<-----\n";
+
+}
+
+
+
+###################################################
+## Do a 'cvs status' on the file to see what the ##
+## current version is.  If the host that we are  ##
+## checking is the local host, ssh is not        ##
+## necessary.  Return the working revision, the  ##
+## repository revision, and the repository path  ##
+## to the caller.                                ##
+###################################################
+sub CheckStatus {
+  my $thishost = shift(@_);
+  my $thispath = shift(@_);
+  my $thisfile = shift(@_);
+  my (@findings,$line,$wkver,$rver,$rpath);
+
+  ## If this host is the localhost, don't use ssh
+  if ($thishost eq $localhost) {
+    chdir($thispath);
+    chomp(@findings = `cvs status $thisfile 2>&1`);
+    chdir($wkdir);
+  } else {
+    chomp(@findings = `ssh $user\@$thishost '. ./.cmprofile; date; hostname; cd $thispath; pwd; cvs status $thisfile 2>&1' 2>&1`);
+  }
+
+  ## Scan the output to find the version number and status
+  print LOG "$indent----->cvs status : begin output<-----\n";
+  foreach $line (@findings) {
+    if ($line =~ /Working revision:[^0-9]+([0-9.]+)/) { $wkver = $1; }
+    if ($line =~ /Working revision:.+(No entry)/) { $wkver = $1; }
+    if ($line =~ /Repository revision:[^0-9]+([0-9.]+).+\/vc\/cvsroot\/(.+)\/$thisfile/) {
+      $rver = $1;
+      $rpath = $2;
+     }
+    print LOG "$tab$line\n";
+  }
+  print LOG "$indent----->cvs status : end output<-----\n";
+
+  return($wkver,$rver,$rpath);
+}
+
+
+#######################################################
+## Use the 'ls' command to see if the file has been  ##
+## deleted successfully.  If the host that we are    ##
+## updating is the local host, ssh is not necessary. ##
+## Return the result to the caller.                  ##
+#######################################################
+sub CheckFile {
+  my $thishost = shift(@_);
+  my $thispath = shift(@_);
+  my $thisfile = shift(@_);
+  my (@findings,$line);
+  my $foundit = 0;
+
+  ## If this host is the localhost, don't use ssh
+  if ($thishost eq $localhost) {
+    chdir($thispath);
+    chomp(@findings = `ls -1 $thisfile 2>&1`);
+    chdir($wkdir);
+  } else {
+    chomp(@findings = `ssh $user\@$thishost '. ./.cmprofile; date; hostname; cd $thispath; pwd; ls -1 $thisfile 2>&1' 2>&1`);
+  }
+
+  ## Scan the output to see if the file exists
+  print LOG "$indent----->ls : begin output<-----\n";
+  foreach $line (@findings) {
+    if ($line =~ /^$thisfile$/) {
+      $foundit = 1;
+    }
+    print LOG "$tab$line\n";
+  }
+  print LOG "$indent----->ls : end output<-----\n";
+
+  return($foundit);
+}

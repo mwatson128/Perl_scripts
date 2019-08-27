@@ -1,0 +1,70 @@
+#!/bin/perl
+
+# CHARLEST - experimental script to calculate number of nights
+
+sub usageexit () {
+  die "    Example usage:  nnt 15jun 8jul\n";
+}
+
+$indate = shift;
+$outdate = shift;
+$indate =~ tr/a-z/A-Z/;
+$outdate =~ tr/a-z/A-Z/;
+
+usageexit unless ($indate && $outdate);
+
+# separate days and months
+if ($indate =~ /(\d+)(\w+)/) {
+  $inday = $1;
+  $inmonth = $2;
+}
+else {
+  usageexit;
+}
+
+if ($outdate =~ /(\d+)(\w+)/) {
+  $outday = $1;
+  $outmonth = $2;
+}
+else {
+  usageexit;
+}
+
+unless ($inday && $outday) {
+  die "Day should not be zero\n";
+}
+
+# hash of offsets
+%offsets = ( 
+    JAN => 0,
+    FEB => 31,
+    MAR => 59,
+    APR => 90,
+    MAY => 120,
+    JUN => 151,
+    JUL => 181,
+    AUG => 212,
+    SEP => 243,
+    OCT => 273,
+    NOV => 304,
+    DEC => 334,
+);
+
+# validate month
+unless ($offsets{$inmonth} || $inmonth eq "JAN") {
+  die "Unknown month $inmonth\n";
+}
+unless ($offsets{$outmonth} || $outmonth eq "JAN") {
+  die "Unknown month $outmonth\n";
+}
+
+# figure out corresponding julian dates for each
+$jin = $offsets{$inmonth} + $inday;
+$jout = $offsets{$outmonth} + $outday;
+
+# number of nights
+$nights = $jout - $jin;
+if ($nights < 0) {
+  $nights += 365;
+}
+print "number of nights = $nights\n";

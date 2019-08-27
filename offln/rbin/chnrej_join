@@ -1,0 +1,46 @@
+#!/bin/perl
+
+$ARGC = @ARGV;
+if ($ARGC) {
+  $IFP = "<./$ARGV[0]";
+  open IFP or die "Can't open input!";
+}
+else {
+  print "Usage: lg_join \<file\> \n";
+  print "  output is to stdout.\n";
+  exit;
+}
+
+$buf = ""; 
+
+while (<IFP>) {
+  chomp;
+      
+  if (/^\*/) {
+    next;
+  }
+
+  if (/^-----/) {
+
+    $buf .= $_;
+    print $buf, "\n";
+    $buf = ""; 
+  }
+  else {
+    # We need to get rid of the \ at the end.
+    if (/\\$/) {
+      chomp;
+      chop;
+      $buf .= $_;
+    }
+    else {
+      chomp;
+      $buf .= $_;
+      $buf .= "N3WL1N3";
+    }
+  }
+}
+ 
+print $buf, "\n";
+
+close IFP;

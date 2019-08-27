@@ -1,0 +1,347 @@
+#!/bin/perl
+#*TITLE - qcheck.pl - Perl script to run daily offline processes - 1.5
+#*SUBTTL Preface, and environment 
+#
+#  (]$[) qcheck.pl:1.5 | CDATE=23:40:35 06/11/98
+#
+#
+#	Copyright (C) 1996 THISCO, Inc.
+#	      All Rights Reserved
+#
+#
+
+# internal global variables
+($qcheck_file);
+($qcheck_dir);
+
+#*SUBTTL qcheck_init - initialize variables for QCHECK processing
+#
+# qcheck_init()
+#
+# initialize variables for processing of QCHECK information
+#
+# parameters:
+#   none
+#
+# globals:
+#   $qcheck_file	- the sfcon.all file from production
+#   $qcheck_dir		- directory from which QCHECK files are retrieved
+#
+# locals (inherited):
+#   rtn_val	- return value to main; modifiable by all sub's called
+#
+# locals (defined):
+#   none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val	- return value from subroutines and commands
+#
+
+{
+  # parameters set from environment variables
+  # (others are set in offln.pl)
+  $qcheck_dir = $ENV{qcheck_dir};
+   
+  # date strings for input/output files
+  my($cdate) = `getydate -t ${date} -d 0 -o sig`;
+  $qcheck_file = "QCHECK.${cdate}";
+
+  $DBUG && print DJUNK "\nQCHECK\n-----\n";
+  $DBUG && print DJUNK "INPUT FILES\n";
+  $DBUG && print DJUNK "qcheck_file: ${qcheck_file}\n";
+}
+
+#*SUBTTL qcheck - run thread for qcheck processing
+#
+# qcheck()
+#
+# run entire thread for processing of QCHECK information
+#
+# parameters:
+#   none
+#
+# globals:
+#
+# locals (inherited):
+#   rtn_val	- return value to main; modifiable by all sub's called
+#
+# locals (defined):
+#   none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val	- return value from subroutines and commands
+#
+
+sub qcheck 
+{
+
+  LOGENTER("QCHECK");
+  !($rtn_val = &qcheck_extract) || return($rtn_val);
+  !($rtn_val = &qcheck_db) || return($rtn_val);
+  LOGEXIT("QCHECK");
+
+  return($rtn_val);
+}
+
+#*SUBTTL qcheck_extract - get QCHECK files and run the extract utilities
+#
+# qcheck_extract()
+#
+# runs the extract half of the QCHECK processing thread.  
+#
+# parameters:
+#   none
+#
+# globals:
+#
+# locals (inherited):
+#   rtn_val	- return value to main; modifiable by all sub's called
+#
+# locals (defined):
+#   none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val	- return value from subroutines and commands
+#
+
+sub qcheck_extract 
+{
+
+  LOGENTER("QCHECK_EX");
+  !($rtn_val = &qcheck_rcp) || return($rtn_val);
+  LOGEXIT("QCHECK_EX");
+
+  return($rtn_val);
+}
+
+#*SUBTTL qcheck_db - run the QCHECK database processing and dependants
+#
+# qcheck_db
+#
+# runs the database half of the QCHECK processing thread
+#
+# parameters:
+#   none
+#
+# globals:
+#
+# locals (inherited):
+#   rtn_val	- return value to main; modifiable by all sub's called
+#
+# locals (defined):
+#   none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val	- return value from subroutines and commands
+#
+
+sub qcheck_db 
+{
+
+  LOGENTER("QCHECK_DB");
+  !($rtn_val = &qcheck_ksftally) || return($rtn_val); 
+  LOGEXIT("QCHECK_DB");
+
+  return($rtn_val);
+}
+
+#*SUBTTL qcheck_rcp - remote copy QCHECK data from production
+#
+# qcheck_rcp()
+#
+# remote copies the QCHECK input files from production
+#
+# parameters:
+#   none
+#
+# globals:
+#
+# locals (inherited):
+#   rtn_val	- return value to main; modifiable by all sub's called
+#
+# locals (defined):
+#   none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val	- return value from subroutines and commands
+#
+
+sub qcheck_rcp 
+{
+
+  LOGENTER("QCHECK: RCP");
+
+  #remove old QCHECK files
+  system("rm -f QCHECK.??????");
+
+  # get QCHECK (summary) file
+  print(LOGFILE "start RCP of ${qcheck_file}: ", `date`);
+  if ($rtn_val = system ("rcp ${remotelogin}\@${remotehost}:${qcheck_dir}/${qcheck_file} . >>$logfile 2>>$logfile")) {
+
+    # there was an error.  call error handler and exit
+    error_out($E_RCPQCHECK, $rtn_val);
+    return($rtn_val);
+  }
+
+  # check the SUM of the copied file and the original
+  if ($rtn_val = s_sum("s_qck.1", "s_qck.2", ${qcheck_dir}, ${qcheck_file})) {
+
+    # there was an error.  call error handler and exit
+    error_out($E_RCPQSUM, $rtn_val);
+    return($rtn_val);
+  }
+  print(LOGFILE "end RCP of ${qcheck_file}: ", `date`);
+
+  LOGEXIT("QCHECK: RCP");
+
+  return($rtn_val);
+}
+
+#*SUBTTL qcheck_ksftally - run db tally QCHECK queueing information
+#
+# qcheck_ksftally()
+#
+# tally the QCHECK queueing information using KSFTALLY---first purging
+# any data that lay in the target table (KSFSIZE) for the period to be run.
+#
+# parameters:
+#   none
+#
+# globals:
+#
+# locals 
+#   inherited:
+#     rtn_val	- return value to main; modifiable by all sub's called
+#
+#   defined:
+#     none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val	- return value from subroutines and commands
+#
+
+sub qcheck_ksftally 
+{
+
+  LOGENTER("QCHECK: KSFTALLY");
+
+  # purge information from vol_tbl
+  print(LOGFILE "start of PURGE of KSFSIZE for ${date}: ", `date`);
+  if ($rtn_val = system("purge -d ${database_b} -t ${date} -n ksfsize -f ksf_ddate  >> $logfile 2>> $logfile")) {
+
+    # there was an error.  call error handler and exit
+    &error_out($E_PURGEKSFTBL, $rtn_val);
+    return($rtn_val);
+  }
+
+  # tally QCHECK volume information
+  print(LOGFILE "start KSFTALLY of ${qcheck_file}: ", `date`);
+  if ($rtn_val = system("ksftally -d ${database_b} -l ${qcheck_file} >> $logfile 2>> $logfile")) {
+
+    # there was an error.  call error handler and exit
+    error_out($E_KSFTALLY, $rtn_val);
+    return($rtn_val);
+  }
+  print(LOGFILE "end KSFTALLY of ${qcheck_file}: ", `date`);
+
+  # delete QCHECK file
+  if (system("rm -f ${qcheck_file}")) {
+    print LOGFILE "  --could not remove ${qcheck_file}--\n";
+  }
+
+  LOGEXIT("QCHECK: KSFTALLY");
+  return($rtn_val);
+}
+
+1;
+
+$E_RCPQCHECK = {
+  'subject', "RCP of QCHECK file failed", 
+  'rs_here', "QCHECK_EX", 
+  'mf', "QCHECK_DB", 
+  'rs_higher_f', 1, 
+  'rs_higher', "QCHECK", 
+'body', "the remote copy of the QCHECK file ${qcheck_file} failed
+
+Check to make sure that the remote file exists in ${remotehost}:${qcheck_dir}/.
+If it is not there, figure out why, and where it's gone to, then restart.
+
+Check to make sure that the permissions are set up correctly on the remote 
+machine (${remotehost}) for remote copying as the '${remotelogin}' login
+
+To restart:
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+
+$E_RCPQSUM = {
+  'subject', "QCHECK file failed checksum", 
+  'rs_here', "QCHECK_EX", 
+  'mf', "QCHECK_DB", 
+  'rs_higher_f', 1, 
+  'rs_higher', "QCHECK", 
+'body', 
+"checksum reported that the remote copy of the file ${qcheck_file} was flawed
+
+There may have been a flaw in the transfer of the file.  Double check the 
+error by using the UNIX command 'sum' on the local and remote file.  The 
+problem usually clears up if you just try again.
+
+To restart:
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+
+$E_PURGEKSFTBL = {
+  'subject', "QCHECK's purge of the KSFSIZE table failed", 
+  'rs_here', "KSFTALLY", 
+  'mf', "", 
+  'rs_higher_f', 1, 
+  'rs_higher', "QCHECK_DB", 
+'body', "the purge of the KSFSIZE table for ${date} (in ${database_b}) failed
+
+This is a very strange thing to happen.  Double check to make sure no other
+programs are trying to access this table at the same time, then restart.
+If the trouble persists, inform someone in the morning.
+
+To restart:
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+
+$E_KSFTALLY = {
+  'subject', "QCHECK's KSFTALLY failed", 
+  'rs_here', "KSFTALLY", 
+  'mf', "", 
+  'rs_higher_f', 1, 
+  'rs_higher', "QCHECK_DB", 
+'body', 
+"the KSFTALLY program failed to load data from ${qcheck_file} into the database
+
+Check the ${logfile} to see what the problem was.  Double check to make sure 
+no other programs were trying to access this table at the same time, then 
+restart.  If the trouble persists, inform someone in the morning.
+
+To restart:
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+1;

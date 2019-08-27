@@ -1,0 +1,35 @@
+#!/bin/sh
+# (]$[) texprint:1.1 | CDATE=06/17/96 20:37:46
+# automatically print a latex report from a pipe
+#
+# usage:  <report & options> | texprint
+#
+# The source for this script is in usw_test:/usw/src/scripts/offln
+#
+if [ $# -ne 0  ]
+then
+  echo ""
+  echo "usage:  <report & arguments>  | texprint"
+  echo "  This utility makes it easy to print out USW reports"
+  echo "  which produce LaTeX output to standard-out."
+  echo ""
+  echo '  You must have a $PRINTER environment variable set'
+  echo "  to the name of the unix printer (e.g., 'hp12e')."
+  echo ""
+  exit 0
+fi
+
+ # put all files in the /tmp directory
+ cd /tmp
+
+ # put latex commands in to a file
+ /bin/awk '{print $0}' > report.$$.tex
+
+ # run LaTeX
+ latex report.$$.tex >>/dev/null 2>>/dev/null
+
+ # send the report to the printer
+ dvips report.$$.dvi
+
+ # clean up the files
+ rm report.$$.*

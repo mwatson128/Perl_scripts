@@ -1,0 +1,20 @@
+#! /bin/ksh
+# Start KV hourly monitoring scripts
+#
+# (]$[) skvhour:1.12 | CDATE=04/27/07 14:24:08
+#
+
+# Source .profile to get KivaNet information
+. ~/.profile > /dev/null 2> /dev/null
+
+# vmstat data collector
+/`uname -n | cut -d . -f 1`/perf/kv/vmstat.pl&
+sleep 1
+
+# Kivanet shared memory locking stats
+/`uname -n | cut -d . -f 1`/perf/kv/kstats.pl&
+sleep 1
+
+# Network packet rate monitor
+/`uname -n | cut -d . -f 1`/perf/kv/chknet &
+sleep 1

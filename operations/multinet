@@ -1,0 +1,57 @@
+#!/usr/bin/perl
+
+sub printdata;
+my @netinput = `netstat -i 2>&1`;
+my $sysname = `uname -n`;
+chomp $sysname;
+my $tm = time;
+my $sleeptime = 30;
+my %interfaces;
+
+foreach $line (@netinput) {
+  @word = split(' ', $line);
+  if ($word[3] =~ m/$sysname/o) {
+    $interfaces{$word[3]}{packets} = $word[4] + $word[6];
+    $interfaces{$word[3]}{colls} = $word[8];
+    $interfaces{$word[3]}{seconds} = $tm;
+  } # end IF
+} # end FOREACH
+
+($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = gmtime($tm);
+$date = sprintf("%02d/%02d/%04d %02d:%02d:%02d", $mon + 1, $mday,
+                $year + 1900, $hour, $min, $sec);
+print "$date + ---- new log cycle ----\n";
+# printdata();
+
+for ($i = 120; 0 < $i; $i--) {
+  sleep $sleeptime;
+  $tm = time;
+  ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = gmtime($tm);
+  $date = sprintf("%02d/%02d/%04d %02d:%02d:%02d", $mon + 1, $mday,
+                     $year + 1900, $hour, $min, $sec);
+  @netinput = `netstat -i 2>&1`;
+  foreach $line (@netinput) {
+    @word = split(' ', $line);
+    if ($word[3] =~ /$sysname/o) {
+      $elapse = $tm - $interfaces{$word[3]}{seconds};
+      $rate = ($word[4] + $word[6] - $interfaces{$word[3]}{packets}) / $elapse;
+      $collper = 100 * ($word[8] - $interfaces{$word[3]}{colls}) / $elapse;
+      printf("%s | %.2f%% coll | %.2f pkt/sec <%s>\n",
+             $date, $collper, $rate, $word[3]);
+      $interfaces{$word[3]}{packets} = $word[4] + $word[6];
+      $interfaces{$word[3]}{colls} = $word[8];
+      $interfaces{$word[3]}{seconds} = $tm;
+    } # end IF
+  } # end FOREACH
+#   printdata();
+} # end FOR
+
+sub printdata {
+  foreach $record (keys %interfaces) {
+    print "$record { ";
+    foreach $rkey (keys %{$interfaces{$record}}) {
+      print "$rkey=$interfaces{$record}{$rkey} ";
+    } # end FOREACH
+    print "}\n";
+  } # end FOREACH
+} # end SUB

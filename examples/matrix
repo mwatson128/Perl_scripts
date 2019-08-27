@@ -1,0 +1,290 @@
+#!/bin/sh
+# (]$[) matrix:1.5 | CDATE=04/26/99 14:55:59
+
+. /usw/reports/monthly/bin/environment
+
+#Usage: matrix -m mmyy
+#      -m mmyy, month year of billing reports to print
+#      output: /usw/reports/monthly/matrix/matrix/matrix{mmyy}.csv,
+#              comma delimited excel import file   
+#      output: /usw/reports/monthly/matrix/checklist{mmyy}.txt, 
+#              billing report check list 
+#      creates a matrix of billing data to be imported into excel 5.0
+
+# usage function
+usage() {
+  echo "Usage: "`basename $0`" -m mmyy"
+  echo "      -m mmyy, month year of billing reports to print"
+  echo "      output: /usw/reports/monthly/matrix/matrix{mmyy}.csv,"
+  echo "              comma delimited excel import file"
+  echo "      output: /usw/reports/monthly/matrix/checklist{mmyy}.txt,"
+  echo "              billing report check list"
+  echo "      creates a "matrix" of billing data to be imported into excel 5.0"
+} # end of function
+
+# validate command line
+mflag=0
+while getopts "m:" option
+do
+  case "$option"
+  in
+    m) m_arg=$OPTARG
+       mflag=1;;
+   \?) usage
+       exit 1;;
+   \*) usage
+       exit;;
+  esac
+done
+
+cd /usw/reports/monthly/matrix
+
+echo "Creating the billing matrix..." >> $LOG
+
+# grab the hrs name, gds name, and booking data(type a, b, and status mods)
+# from the billing reports.
+
+# if it's for the previous month then sort from the latest files else get them
+# from the archives
+
+# Turn mmyy around to yymm. (That's how the archive directories are named)
+yy=`echo $m_arg | cut -c3,4`
+mm=`echo $m_arg | cut -c1,2`
+ym="${yy}${mm}"
+
+if test $DS -eq $m_arg
+then
+  awk '  { {if ($1 == "Global") 
+              printf("%s ", $4)
+            } 
+  	   {if ($1 == "Hotel")
+	      printf("%s ", $5)
+           }
+	   {if ($1 == "Total" && $2 == "Type" && $3 == "A" && $4 == "Net")
+	      printf("%d ", $6)
+	   }
+	   {if ($1 == "Total" && $2 == "Type" && $3 == "B" && $4 == "Net")
+	      printf("%d ", $6)
+	   }
+	   {if ($1 == "Total" && $2 == "Status" && $3 == "Modifications")
+	      printf("%d\n", $4)
+	   }
+         }'  $BILLDIR/hrs/*${m_arg}.bil \
+$BILLDIR/gds/*${m_arg}.bil \
+$BILLDIR/hrsgds/*${m_arg}.bil \
+$BILLDIR/*${m_arg}.bil | \
+  awk '{print $2, $1, $3, $4, $5}' |sort > /tmp/bil.dat
+else
+  awk '  { {if ($1 == "Global")
+	      printf("%s ", $4)
+ 	   }
+	   {if ($1 == "Hotel")
+	      printf("%s ", $4)
+	   }
+	   {if ($1 == "Total" && $2 == "Type" && $3 == "A" && $4 == "Net")
+	      printf("%d ", $8)
+	   }
+	   {if ($1 == "Total" && $2 == "Type" && $3 == "B" && $4 == "Net")
+	      printf("%d ", $8)
+	   }
+	   {if ($1 == "Total" && $2 == "Status" && $3 == "Modifications")
+	      printf("%d\n", $6)
+           }
+         }'  $BILLDIR/hrs/${ym}/*${m_arg}.bil \
+$BILLDIR/gds/${ym}/*${m_arg}.bil \
+$BILLDIR/hrsgds/${ym}/*${m_arg}.bil \
+$BILLDIR/${ym}/*${m_arg}.bil | \
+  awk '{print $2, $1, $3, $4, $5}' |sort > /tmp/bil.dat
+fi
+# create a file of unique gds names 
+awk '$2 != "ALL" {print $2}' /tmp/bil.dat|sort -u >/tmp/gds.dat;
+echo "ALL" >>/tmp/gds.dat;
+
+# create a file of unique hrs names
+awk '$1 != "ALL" {print $1}' /tmp/bil.dat|sort -u >/tmp/hrs.dat;
+echo "ALL" >>/tmp/hrs.dat;
+
+
+# Now, sort, order, and print the data matrix
+awk ' BEGIN {
+debug      = 0; 
+outer      = 0;
+inter      = 0;
+matrix_cnt = 0;
+found      = 0;
+data_cnt   = 0; 
+gds_cnt    = 0;
+hrs_cnt    = 0;
+         x = 0;
+         p = 5;
+         y = 0;
+}
+  
+
+#load the DATA array with all the billing data
+{if (FILENAME ~/bil.dat/)
+  { data_cnt++
+    DATA[data_cnt] = $0 
+  }
+} # end if
+
+# load the GDS array with the unique names of the GDSs
+{ if (FILENAME ~/gds.dat/)
+  { gds_cnt++
+    GDS[gds_cnt] = $0 
+  }
+} # end if
+
+# load the HRS array with the unique names of the HRSs
+{ if (FILENAME ~/hrs.dat/)
+  { hrs_cnt++
+    HRS[hrs_cnt] = $0 
+  }
+} # end if
+
+END { 
+
+# create the MATRIX array (HRS by GDS)
+{  for(x=1; x<=hrs_cnt; x++)
+     for(y=1; y<=gds_cnt; y++)
+       { matrix_cnt++
+         MATRIX[matrix_cnt] = HRS[x] " " GDS[y]
+       }
+}
+
+# check the MATRIX array for HRS and GDS combos that are in the DATA array 
+
+  #for each element in the MATRIX array
+  for(outer=1; outer<=matrix_cnt; outer++){
+    found=0
+    split(MATRIX[outer], M)
+      if (debug){
+        printf("\n%-15s ", M[1])
+      }
+        for(inter=1; inter<=data_cnt; inter++){
+	  split(DATA[inter], D)
+	     if(M[1] == D[1]){
+	       if(M[2] == D[2]){
+		 found = 1
+		 REPORT[outer]= M[1]"   "M[2]"   "D[3]"   "D[4]"   "D[5] 
+		 if(debug){
+	           printf("%-8s %9d", M[2], D[3])
+		 }
+               } 
+	     }
+	} # end of inter loop
+	if (found == 0){
+	   REPORT[outer]= M[1]"  "M[2]"  ""  " "na" " " "na" " " "na" 
+
+	  if (debug){
+	    printf("%-8s %9s", M[2], "n/a" ) 
+	  }
+	}
+  } # end of outer loop
+
+  # Now, print out a header with the GDS names for the Type A bookings
+  printf("%-52s,","USW Type A Billing") 
+  for(k=1; k<=gds_cnt; k++){
+    printf("%-11s,", GDS[k])
+  }
+  printf("\n")
+
+print_cnt = 1
+for (b=1; b<=(hrs_cnt * 2); b+=2){
+ split(REPORT[print_cnt], R)
+ printf("\n%-52s,", R[1])
+   for(c=1; c<=gds_cnt; c++){
+     split(REPORT[print_cnt], R)
+     print_cnt++
+     if (R[3] == "na")
+       printf("%+13s,", "0") 
+     else
+       printf("%-13s,", R[3]) 
+   }
+}
+printf("\n\n\n\n")
+  # Now, print out a header with the GDS names for the Type B bookings
+  printf("%-52s,","USW Type B Billing") 
+  for(k=1; k<=gds_cnt; k++){
+    printf("%-11s,", GDS[k])
+  }
+  printf("\n")
+
+print_cnt = 1
+for (b=1; b<=(hrs_cnt * 2); b+=2){
+ split(REPORT[print_cnt], R)
+ printf("\n%-52s,", R[1])
+   for(c=1; c<=gds_cnt; c++){
+     split(REPORT[print_cnt], R)
+     print_cnt++
+     if (R[3] == "na")
+       printf("%+13s,", "0") 
+     else
+       printf("%-13s,", R[4]) 
+   }
+}
+{printf("\n\n\n\n")}
+  # Now, print out a header with the GDS names for the Status Mods 
+  printf("%-52s,","USW Status Modifications") 
+  for(k=1; k<=gds_cnt; k++){
+    printf("%-11s,", GDS[k])
+  }
+  printf("\n")
+
+print_cnt = 1
+for (b=1; b<=(hrs_cnt * 2); b+=2){
+ split(REPORT[print_cnt], R)
+ printf("\n%-52s,", R[1])
+   for(c=1; c<=gds_cnt; c++){
+     split(REPORT[print_cnt], R)
+     print_cnt++
+     if (R[3] == "na")
+       printf("%+13s,", "0") 
+     else
+       printf("%-13s,", R[5]) 
+   }
+}
+{printf("\n\n\n\n")}
+   
+}' /tmp/bil.dat /tmp/gds.dat /tmp/hrs.dat > $MDIR/matrix${m_arg}.csv
+
+
+# Last, make a list for checking the billing reports. 
+awk '{print $2, $1}' /tmp/bil.dat | sort  |\
+awk ' BEGIN {
+  i =0
+}
+
+{ CHKLIST[i] = $0
+  i++
+}
+
+END {
+
+split(CHKLIST[1], ckl)
+printf ("GDS: %-3s\n", ckl[1] )
+printf ("  %+5s __\n", substr(ckl[2], 1, 5) )
+cname = ckl[1]
+
+for (z=1; z<=i; z++){
+  split(CHKLIST[z], ckl)
+  if(cname == ckl[1]) {
+    printf ("  %+5s __\n", substr(ckl[2], 1, 5) )
+  }
+  else {
+     if(z != i){
+     printf ("\n\fGDS: %-3s\n", ckl[1])
+     printf ("  %+5s __\n", substr(ckl[2], 1, 5) )
+     cname = ckl[1]
+     }
+ }
+}
+
+    }'   > $MDIR/checklist${m_arg}.txt
+
+# Clean up the temp files 
+rm /tmp/bil.dat
+rm /tmp/gds.dat
+rm /tmp/hrs.dat
+
+echo "matrix finished at: `date`" >> $LOG

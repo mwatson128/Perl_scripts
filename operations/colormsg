@@ -1,0 +1,7 @@
+#!/usr/bin/perl
+
+die "usage: $0 [color number] [message]\n" unless $#ARGV > 0;
+my $color = shift @ARGV;
+my $string = join(" ", @ARGV);
+printf "%c[1;%sm%s%c[0m", 27, $color, $string, 27;
+

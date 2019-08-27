@@ -1,0 +1,6 @@
+# Copy specified file from usp1 to same place on tpe1
+echo "rcp tpe1:`pwd`/${1} ${1}.usp1"
+rcp usp1:`pwd`/${1} ${1}.usp1
+echo "diff ${1}.usp1 ${1} |$PAGER"
+diff ${1}.usp1 ${1} |$PAGER
+

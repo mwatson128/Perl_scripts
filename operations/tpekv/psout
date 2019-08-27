@@ -1,0 +1,27 @@
+#!/bin/sh
+# (]$[) psout:1.9 | CDATE=04/29/07 18:57:37
+
+TZ=GMT; export TZ
+MDATE=`date '+%m%y'`
+PSDIR=/prod/perf/ps
+LOG=ps.`date +%m%d%y`
+
+user=`/usr/bin/id | cut -d"(" -f2 | cut -d")" -f1`
+machine=`/bin/uname -n | cut -d . -f 1`
+
+PSDIR=/$machine/perf/kv
+
+cd $PSDIR
+
+if [ ! -d $MDATE ]
+then
+  mkdir $MDATE
+  chmod 775 $MDATE
+fi
+
+cd $MDATE
+
+# Run commands.  Output to log.
+date >> $LOG
+nice /usr/bin/ps -auxw >> $LOG
+chmod 664 $LOG

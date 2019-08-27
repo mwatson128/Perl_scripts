@@ -1,0 +1,54 @@
+#!/bin/perl
+# (]$[) billnow:1.4 | CDATE=05/01/99 23:07:40
+#
+# This program determins whether billing can be run for the past month.
+# It examines the name of a file for the last billing date processed
+# and compares it to the last day of the last month.
+#
+# This program's output is one of two english phrases: either "you can
+# run billing", or "you cannot run billing".  This output is only to 
+# assist us humans.  
+# This program returns a 0 (zero) if it is safe to run billing, and a 1
+# (one) if it is not, and is available through the $? variable in sh.
+#
+# The source for this script is in usw_test:/usw/src/scripts/offln
+#
+
+$DBUG = 0;
+
+# get directory of offline processing from the environment
+$zone = `uname -n`;
+chomp $zone;
+
+$ENV{PATH} = ".:/$zone/usw/offln/bin:/bin:/usr/bin:/usr/.ucbucb:/usr/local/bin:/usr/ucb:/$zone/usw/reports/monthly/bin:/pdl/bin";
+$offln_dir = "/$zone/usw/offln/daily";
+
+# get the previous month (yymm)
+$pvmon = sprintf("%s%s", substr(`pvmon`, 2, 2), substr(`pvmon`, 0, 2));
+
+# search backwards day-by-day (from today) until we find the previous month
+for ($i = 0; 
+     $mon = substr(`getydate -o sig -d $i`, 0, 4),
+     $pvmon lt $mon; 
+     $i--) {
+     }
+
+# use offset ($i) to make datestring for (/offln/daily/) filename comparison
+$fileds = `getydate -o sig -d $i`;
+$DBUG && print ("$fileds\n"); 
+
+
+# get the name of the current billing processed file 
+chomp($bil_proc_thru = `ls /$zone/usw/offln/daily/[0-9][0-9][0-1][0-9][0-3][0-9].billing`);
+$bil_proc_thru = substr ($bil_proc_thru, -14);
+$DBUG && print "$bil_proc_thru\n";
+
+# compare the file names
+if ($bil_proc_thru ge "${fileds}.billing") {
+  print("you can run billing\n");
+  exit (0);
+}
+else {
+  print("you cannot run billing\n");
+  exit (1);
+}

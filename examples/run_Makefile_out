@@ -1,0 +1,19 @@
+#!/usr/bin/perl 
+
+$pwd = ${ENV{PWD}};
+
+$IFP = "<${pwd}/${ARGV[0]}";
+open IFP or die "can't open IFP\n";
+
+@list = <IFP>;
+  
+print ":\n";
+foreach $file (@list) {
+  chomp $file;
+
+  ($dirname, $ipname) = split /=/, $file; 
+
+  print "cd ${pwd}/${dirname}\n";
+  print "ckout -V PEGSDEV17 -R \"Correcting dev targets in Makefile to use get_targets.pl - cvs_install.pl\" -e Makefile\n";
+}
+

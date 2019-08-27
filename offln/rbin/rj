@@ -1,0 +1,12 @@
+#! /bin/sh
+
+if [ -z "$1" ]
+then
+	TODAY=`env TZ=GMT0 date '+%m%d%y'`
+else
+	TODAY=$1
+fi
+
+echo $TODAY
+
+ulgscan -f ${HOME}/bin/rj_ALIAS ./rej${TODAY}.lg

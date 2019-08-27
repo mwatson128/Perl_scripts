@@ -1,0 +1,8 @@
+ procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----
+ r  b   swpd   free   buff  cache    si   so    bi    bo   in   cs us sy id wa st
+ 0  0      0 4051412   3428 3157652   0    0     1     3   13   22  0  0 100  0  0
+
+ kthr      memory            page            disk          faults      cpu
+ r b w   swap  free  re  mf pi po fr de sr m1 m1 m1 m1   in   sy   cs us sy id
+ 2 0 0 14976840 10081648 633 3258 311 7 6 0 0 3 2 0  0 4956 150657 28805 32 10 58
+

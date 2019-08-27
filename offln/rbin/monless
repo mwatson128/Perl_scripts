@@ -1,0 +1,32 @@
+:
+
+# If the user provided a date, use it.  Otherwise, use today's date.
+if [ -z "$1" ]
+then
+    echo "usage: $0 MMDD HRSLIST"
+    exit
+
+else
+  HRS="$2"
+  MONYEAR="$1"
+  MONTH=`
+  DIRT=/uswsup01/loghist/stats/${MONYEAR}
+fi
+
+runscan () {
+
+  /home/uswrpt/bin/parse_stats.pl -d h -l 5000000 \
+  -U 5000000 -h ${HRS}
+}
+
+for DAY in 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 \
+           16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31
+  do
+    gunzip $DIRT/p2r$TODAY$HOUR.lg.gz
+    runscan
+    gzip $DIRT/p2r$TODAY$HOUR.lg
+  done
+
+
+/home/uswrpt/bin/parse_stats.pl -
+

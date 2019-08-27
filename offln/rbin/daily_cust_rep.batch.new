@@ -1,0 +1,8 @@
+# This batch files runs all the USW Daily Customer Reports.
+# (]$[) daily_cust_rep.batch:1.54 | CDATE=03/17/06 05:06:55 
+# HRS=<CHN>:  Primary Chain ID of customer.  This script will not produce 
+#             valid reports with sub-chains.
+# dt:  Compile Downtime Report.
+# rj:  Compile Reject Log Analysis
+# to:  Compile Timeout Report 
+/usw/offln/bin/daily_cust_rep.pl CFG=/home/uswrpt/bin/daily_cust_rep.cfg DATE=03/15/06 HRS=AC dt rj to

@@ -1,0 +1,25 @@
+#!/bin/sh
+# (]$[) latex1.sh:1.1 | CDATE= 12 Feb 1996 08:53:03
+
+# UltraSwitch monthly report script
+
+. /reports/monthly/bin/environment
+
+set -x
+cd $TEXDIR/trans
+
+ls | lpr -P$PRINTER
+
+# Create .dvi files
+LAT=`ls $TEXDIR/trans/*/*.mon`
+for FILE in $LAT
+do
+  latex $FILE >/dev/null 2>/dev/null
+  dvips $TEXDIR/trans/*.dvi >/dev/null 2>/dev/null
+  rm -r *.dvi
+done
+ls | lpr -P$PRINTER
+
+rm -r $TEXDIR/trans/*.aux
+rm -r $TEXDIR/trans/*.log
+

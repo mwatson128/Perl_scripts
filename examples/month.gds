@@ -1,0 +1,140 @@
+#! /bin/perl
+# This program looks at the /reports/monthly/billing
+# *.bil files and extracts certain values for the
+# people in Thisco Customer Service.  This program
+# was written by Michael Jolly. 
+# When running this file, it creates a file called gdsfile.txt.
+# You will neet to rename the file for that month ex.1199.gdsfile.txt
+# This is run for the OPS report.
+# (]$[) month.gds:1.5 | CDATE=09/19/01 13:34:25
+
+require "/home/mikew/lib/jlib.pm";
+
+$usage =
+"Usage: $0\n".
+"       -m Month/Year of report (mm/yy)\n".
+"       [ -v verbose output ]\n";
+
+$report_dir = "/usw/reports/monthly/billing";
+
+%GDSLIST = (
+  "1A"  => "Amadeus",
+  "1P"  => "Worldspan",
+  "AA"  => "Sabre",
+  "CM" => "CMR",
+  "IT" => "ITS",
+  "TP" => "TPI",
+  "UA"  => "Galileo",
+  "VS" => "VSI",
+  "WB"  => "TravelWeb",
+  "XS"  => "SITA",
+);
+
+## process command line arguments
+$temp = join($", @ARGV);
+@cmdline = split /-/, $temp;
+foreach $cmd (@cmdline) {
+  ## -m Month/Year
+  if ($cmd =~ /^m\s+(\d+)\/(\d+)/) {
+    $month      = $1;
+    $year       = $2;
+    $prev_month = $month - 1 < 1 ? $month + 11 : $month - 1;
+    $prev_year  = $year - 1 < 0 ? 99 : $year - 1;
+    $month      = numfix($month);
+    $year       = numfix($year);
+    $prev_month = numfix($prev_month);
+    $prev_year  = numfix($prev_year);
+  }
+  ## -v Verbose
+  if ($cmd =~ /^v/) {
+    $VERBOSE = 1;
+  }
+}
+
+$VERBOSE && print "Command Line Option list: @ARGV\n";
+$VERBOSE && print "Month/Prev Month entered: $month $prev_month\n";
+$VERBOSE && print "Year/Prev Year entered:   $year $prev_year\n";
+
+## process options
+ # no month/year
+if (!$month || !$year) {
+  print "Error: no month/year specified\n$usage\n";
+  exit 1;
+}
+
+open OFP1, ">gdsfile.txt";
+get_em("gds", %GDSLIST);
+close OFP1;
+
+sub get_em {
+  my ($gds, %list) = @_;
+
+  for ($i = 0; $i < 3; $i++) {
+    $m = $i == 1 ? $prev_month : $month;
+    $y = $i == 2 ? $prev_year  : $year;
+    foreach (sort keys %list) {
+      if ($i == 1 || $i == 2) {
+        $filename = "$report_dir/$gds/$y$m/$_$m$y.bil";
+      }
+      else {
+        $filename = "$report_dir/$gds/$_$m$y.bil";
+      }
+      $filename =~ tr/A-Z/a-z/;
+    
+      if (-e $filename) {
+        open IFP, $filename;
+        while ($bil_sum = <IFP>) {
+          if ($bil_sum =~ /Type A Net Bookings\s+(\d+)/) {
+            $list{$_}{$m}{$y}{type_a_net_bookings} = $1;
+          }
+          elsif ($bil_sum =~ /Type A Net Bookings\s+(-\d+)/) {
+            $list{$_}{$m}{$y}{type_a_net_bookings} = $1;
+          }
+          if ($bil_sum =~ /Type B Net Bookings\s+(\d+)/) {
+            $list{$_}{$m}{$y}{type_b_net_bookings} = $1;
+          }
+          elsif ($bil_sum =~ /Type B Net Bookings\s+(-\d+)/) {
+            $list{$_}{$m}{$y}{type_b_net_bookings} = $1;
+          }
+          if ($bil_sum =~ /Total Status Modifications\s+(\d+)/) {
+            $list{$_}{$m}{$y}{status_mods} = $1;
+          }
+          elsif ($bil_sum =~ /Total Status Modifications\s+(-\d+)/) {
+            $list{$_}{$m}{$y}{status_mods} = $1;
+          }
+        }
+        close IFP;
+      } #end if (-e $filename)
+    } #end foreach (sort keys %list)
+  } #end for
+
+  foreach (sort keys %list) {
+    $list{$_}{$month}{$year}{net_bookings} =
+      $list{$_}{$month}{$year}{type_a_net_bookings} +
+      $list{$_}{$month}{$year}{type_b_net_bookings};
+  
+    $list{$_}{$prev_month}{$year}{net_bookings} =
+      $list{$_}{$prev_month}{$year}{type_a_net_bookings} +
+      $list{$_}{$prev_month}{$year}{type_b_net_bookings};
+  
+    $list{$_}{$month}{$prev_year}{net_bookings} =
+      $list{$_}{$month}{$prev_year}{type_a_net_bookings} +
+      $list{$_}{$month}{$prev_year}{type_b_net_bookings};
+  
+    printf OFP1 "%s %d %d %d %d %d %d\n",
+      $list{$_},
+      $list{$_}{$month}{$year}{type_a_net_bookings} == 0 ? 0 :
+      $list{$_}{$month}{$year}{type_a_net_bookings},
+      $list{$_}{$month}{$year}{type_b_net_bookings} == 0 ? 0 :
+      $list{$_}{$month}{$year}{type_b_net_bookings},
+      $list{$_}{$month}{$year}{net_bookings} == 0 ? 0 :
+      $list{$_}{$month}{$year}{net_bookings},
+      $list{$_}{$month}{$year}{status_mods} == 0 ? 0 :
+      $list{$_}{$month}{$year}{status_mods},
+      $list{$_}{$month}{$prev_year}{net_bookings} == 0 ? 0 :
+      $list{$_}{$month}{$prev_year}{net_bookings},
+      $list{$_}{$month}{$prev_year}{status_mods} == 0 ? 0 :
+      $list{$_}{$month}{$prev_year}{status_mods};
+  
+  } #end foreach (sort keys %list)
+} #end sub my_list

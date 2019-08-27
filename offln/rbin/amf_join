@@ -1,0 +1,47 @@
+#!/bin/perl
+
+$ARGC = @ARGV;
+if ($ARGC) {
+  $IFP = "<./$ARGV[0]";
+  open IFP or die "Can't open input!";
+}
+else {
+  print "Usage: lg_join \<file\> \n";
+  print "  output is to stdout.\n";
+  exit;
+}
+
+$buf = ""; 
+
+while (<IFP>) {
+  chomp;
+ 
+  next if (/^\*/);
+  next if (/EOF/);
+
+  if (/^\d\d\/\d\d/) {
+    
+    print $buf, "\n" if ($buf);
+    @buffer = split / /;
+    ($pc1, $pc2) = split /\# /;
+    $buf = ""; 
+    $buf .= "$buffer[0] $buffer[1] MSN ${pc2}||";
+    #$buf .= $_;
+  }
+  else {
+    # We need to get rid of the \ at the end.
+    if (/\\$/) {
+      chomp;
+      chop;
+      $buf .= $_;
+    }
+    else {
+      chomp;
+      $buf .= $_;
+    }
+  }
+}
+      
+print $buf, "\n";
+
+close IFP;

@@ -1,0 +1,27 @@
+#!/bin/ksh
+# (]$[) topout:1.10 | CDATE=04/29/07 18:57:45
+
+# Build TOPDIR based on user and machine.
+user=`id | cut -d"(" -f2 | cut -d")" -f1`
+#user=`/bin/who am i | awk '{print $1}'`
+machine=`/bin/uname -n | cut -d . -f 1`
+TOPDIR=/$machine/perf/kv
+
+TZ=GMT; export TZ
+MDATE=`date '+%m%y'`
+LOG=top.`date +%m%d%y`
+
+cd $TOPDIR
+
+if [ ! -d $MDATE ]
+then
+  mkdir $MDATE
+  chmod 775 $MDATE
+fi
+
+cd $MDATE
+
+# Run commands.  Output to log.
+date >> $LOG
+nice /bin/top -b -n 1 | head -50 >> $LOG
+chmod 644 $LOG

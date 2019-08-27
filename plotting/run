@@ -1,0 +1,6 @@
+:
+
+/home/mwatson/plotting/usw_tps.pl
+
+scp usw_prod_tps.ps pegslog11:/home/mwatson
+

@@ -1,0 +1,37 @@
+#!/usr/bin/perl
+
+my %lockinfo;
+
+foreach $arg (@ARGV) {
+  $line = `kip -u qa $arg | grep Shared`;
+  chomp $line;
+  if ($line =~ /Waits: (-*\d+)\s+Requests: (-*\d+)/o) {
+    $lockinfo{$arg}{waits} = $1;
+    $lockinfo{$arg}{reqs} = $2;
+    print "$arg";
+    print "\tnew:\twaits = $1\treqs = $2\n";
+  }
+}
+
+for (;;) {
+sleep 60;
+print "==========\n";
+foreach $arg (@ARGV) {
+  $line = `kip -u qa $arg | grep Shared`;
+  chomp $line;
+  if ($line =~ /Waits: (-*\d+)\s+Requests: (-*\d+)/o) {
+    $waits = $1;
+    $reqs = $2;
+    $diffwaits = $waits - $lockinfo{$arg}{waits};
+    $diffreqs = $reqs - $lockinfo{$arg}{reqs};
+    $pctwaits = 100 * $diffwaits / $diffreqs;
+    $gatesec = $diffreqs / 60;
+    print "$arg";
+    print "\tnew:\twaits = $waits\treqs = $reqs\n";
+    print "\tdiff:\twaits = $diffwaits\treqs = $diffreqs\n";
+    print "\t% waits = $pctwaits\tgates/sec = $gatesec\n\n";
+    $lockinfo{$arg}{waits} = $waits;
+    $lockinfo{$arg}{reqs} = $reqs;
+  }
+}
+}

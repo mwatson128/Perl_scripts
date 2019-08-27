@@ -1,0 +1,11 @@
+# billing reports
+cd /reports/monthly/billing/hrs2
+print bh????.bil hy????.bil fe????.bil sp????.bil
+
+# transaction reports (for graphs)
+cd /reports/monthly/trans
+print all????.mon
+
+# performance reports
+cd /reports/monthly/perf
+print *.perf

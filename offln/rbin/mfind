@@ -1,0 +1,43 @@
+#!/usr/bin/perl
+
+sub usage {
+
+  printf "Usage:\tff [-h] [-r|-w directorypath] filename\n\n";
+  printf "\t-h\t= for this usage statement.\n\t-r\t= sets the directory path";
+  printf " to root.\n\t-w\t= sets the directory path to directorypath.\n";
+  printf "\n\tThe default path is set to /usw if no arguments are given.\n";
+
+}
+
+require "Getopt/Std.pm";
+Getopt::Std::getopts('hrw:');
+
+$argc = @ARGV;
+if ($argc == 0) {
+  usage();
+  exit;
+}
+else {
+  $what = $ARGV[0];
+}
+
+if ($opt_h) {
+  usage();
+  exit(0);
+}
+elsif ($opt_r) {
+  @places = qx(find / -name $what -print 2>/dev/null);
+}
+elsif ($opt_w) {
+  @places = qx(find $opt_w -name $what -print 2>/dev/null);
+}
+else {
+  @places = qx(find /usw/ -name $what -print 2>/dev/null);
+}
+
+print "\n", "*" x 70, "\n";
+foreach $line (@places) {
+	chomp($line);
+	print "$what was found in:\t$line\n"; 
+}
+print "*" x 70, "\n";

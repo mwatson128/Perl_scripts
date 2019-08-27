@@ -1,0 +1,4 @@
+#!/bin/sh
+
+chmod 755 /usw/reports/monthly/bin/*
+ 

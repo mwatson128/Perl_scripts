@@ -1,0 +1,7 @@
+#perl dtrep.pl -s 06/06/03 
+
+# Output awklog file to vlad.out
+#perl dt_tally_test.pl -d 09/29/03 -o vlad.out 2> vlad.err > vlad_std.out
+
+# Total rerun
+perl dt_tally_test.pl -d 01/08/04 2> vlad.err > vlad_std.out

@@ -1,0 +1,13 @@
+#! /bin/sh
+
+#LGDIR=/qa/logs/lg
+LGDIR=.
+
+if [ -z "$1" ]
+then
+	TODAY=`env TZ=GMT0 date '+%m%d%y'`
+else
+	TODAY=$1
+fi
+
+ulgscan -f ${HOME}/bin/rp_ALIAS ./rpt${TODAY}.lg

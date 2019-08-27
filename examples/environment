@@ -1,0 +1,54 @@
+#!/bin/sh
+# (]$[) environment:1.31 | CDATE= 11/28/06 14:49:13
+# environment for the reporting scripts
+
+# environment variables
+ZONE=`uname -n`
+INFORMIXDIR=/informix-$ZONE_1
+ONCONFIG=onconfig.$ZONE_1
+INFORMIXSERVER=$ZONE_1_shm
+PATH=.:/$ZONE/usw/offln/bin:/bin:/usr/bin:/usr/.ucbucb:/usr/local/bin:/usr/ucb:/$ZONE/usw/reports/monthly/bin:$INFORMIXDIR/bin:/home/uswrpt/teTeX/bin/sparc-solaris2.5/
+export PATH ONCONFIG INFORMIXSERVER INFORMIXDIR
+
+# mailing lists
+PERSON="Mike.Watson@pegs.com Ted.Lankford@pegs.com"
+PEOPLE="Mike.Watson@pegs.com Ted.Lankford@pegs.com"
+TEXIES="Mike.Watson@pegs.com Ted.Lankford@pegs.com"
+HIDEMAIL="Mike.Watson@pegs.com Ted.Lankford@pegs.com"
+
+# directories
+BILLDIR=/$ZONE/usw/reports/monthly/billing
+BINDIR=/$ZONE/usw/reports/monthly/bin
+PERFDIR=/$ZONE/usw/reports/monthly/perf
+PERFBDIR=/$ZONE/usw/reports/monthly/perfb
+PERF2DIR=/$ZONE/usw/reports/monthly/perf2
+TEXDIR=/$ZONE/usw/reports/monthly/texreports
+REPDIR=/$ZONE/usw/reports/monthly
+MDIR=/$ZONE/usw/reports/monthly/matrix
+TRANSDIR=/$ZONE/usw/reports/monthly/trans
+DAYBILLDIR=/$ZONE/usw/reports/daily/billing
+
+# misc
+PRINTER=hpmkt
+DS=`pvmon`
+LOG=/$ZONE/usw/reports/monthly/log/month${DS}.log
+export PRINTER
+
+# subroutines
+can_it_run ()
+{
+  SCRIPT=$1
+  MAILTO=$2
+
+  # Ensure daily billing processing of last month has completed
+  # if so, continue; if not, send mail and exit
+  billnow
+  if [ 0 -eq $? ]
+  then
+    echo "${SCRIPT}: Running. Processing of ${DS} completed OK" >>$LOG
+  else
+    echo "${SCRIPT}: Cannot run, daily processing of ${DS} is incomplete" >>$LOG
+    mailx -s "${SCRIPT} halted" $MAILTO< $LOG
+    exit 1
+  fi
+}

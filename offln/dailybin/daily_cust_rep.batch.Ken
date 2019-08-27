@@ -1,0 +1,11 @@
+# This batch files runs all the USW Daily Customer Reports.
+# (]$[) daily_cust_rep.batch:1.75 | CDATE=01/02/08 09:00:33 
+# HRS=<CHN>:  Primary Chain ID of customer.  This script will not produce 
+#             valid reports with sub-chains.
+# dt:  Compile Downtime Report.
+# rj:  Compile Reject Log Analysis
+# to:  Compile Timeout Report 
+
+ZONE=`uname -n`
+
+/$ZONEdaily_cust_rep.pl HRS=WV dt rj to

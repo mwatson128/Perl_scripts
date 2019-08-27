@@ -1,0 +1,8 @@
+alias . read
+alias p rdprev
+alias d deluswrec
+alias sd display dmpdat
+alias 1p2 adduswrec LGPER|GDS1P||
+alias wb adduswrec LGPER|GDSWB||
+alias 1a adduswrec LGPER|GDS1A||
+alias 1s adduswrec LGPER|GDS1S||

@@ -1,0 +1,960 @@
++ cd /usw/reports/monthly/texreports/trans 
++ date 
++ echo start time for latex1.sh reports is  Thu Jul 6 00:36:01 GMT 2000 
++ trans -m -o latex -a MS 
++ trans -m -o latex 
++ trans -m -o latex -h HI|YZ 
++ trans -m -o latex -h HI 
++ trans -m -o latex -h HI -a AA 
++ trans -m -o latex -h HI -a 1A 
++ trans -m -o latex -h HI -a WB|MS 
++ trans -m -o latex -h HI -a 1P 
++ trans -m -o latex -h HI -a UA|1V|1C|1G 
++ trans -m -o latex -h YZ 
++ trans -m -o latex -h YZ -a AA 
++ trans -m -o latex -h YZ -a 1A 
++ trans -m -o latex -h YZ -a WB|MS 
++ trans -m -o latex -h YZ -a 1P 
++ trans -m -o latex -h YZ -a UA|1V|1C|1G 
++ trans -m -o latex -h BW 
++ trans -m -o latex -h BW -a 1P 
++ trans -m -o latex -h BW -a 1A 
++ trans -m -o latex -h BW -a AA 
++ trans -m -o latex -h BW -a UA|1V|1C|1G 
++ trans -m -o latex -h BW -a WB|MS 
++ trans -m -o latex -h CD 
++ trans -m -o latex -h DE 
++ trans -m -o latex -h DW 
++ trans -m -o latex -h DT|ES|HG|HX|RL 
++ trans -m -o latex -h DT 
++ trans -m -o latex -h ES 
++ trans -m -o latex -h HG 
++ trans -m -o latex -h HX 
++ trans -m -o latex -h RL 
++ trans -m -o latex -h FA 
++ trans -m -o latex -h UE 
++ trans -m -o latex -h FE 
++ trans -m -o latex -h FS 
++ trans -m -o latex -h GR|WC 
++ trans -m -o latex -h GR 
++ trans -m -o latex -h WC 
++ trans -m -o latex -h HH|HL 
++ trans -m -o latex -h HH 
++ trans -m -o latex -h HL 
++ trans -m -o latex -h HJ|WG 
++ trans -m -o latex -h HJ 
++ trans -m -o latex -h WG 
++ trans -m -o latex -h DI 
++ trans -m -o latex -h MQ 
++ trans -m -o latex -h RA 
++ trans -m -o latex -h SE 
++ trans -m -o latex -h TL 
++ trans -m -o latex -h HJ|WG -a WB|MS 
++ trans -m -o latex -h DI -a WB|MS 
++ trans -m -o latex -h MQ -a WB|MS 
++ trans -m -o latex -h RA -a WB|MS 
++ trans -m -o latex -h SE -a WB|MS 
++ trans -m -o latex -h TL -a WB|MS 
++ trans -m -o latex -h BH|HY|SP|RQ|SC 
++ trans -m -o latex -h BH 
++ trans -m -o latex -h HY 
++ trans -m -o latex -h RQ 
++ trans -m -o latex -h SC 
++ trans -m -o latex -h SP 
++ trans -m -o latex -h HK|HT|KR|PB|RM|RO|FF 
++ trans -m -o latex -h HK|HT 
++ trans -m -o latex -h KR 
++ trans -m -o latex -h RM|RO 
++ trans -m -o latex -h PB 
++ trans -m -o latex -h FF 
++ trans -m -o latex -h IA 
++ trans -m -o latex -h IC 
++ trans -m -o latex -h IQ 
++ trans -m -o latex -h MT 
++ trans -m -o latex -h KG|XH 
++ trans -m -o latex -h KG 
++ trans -m -o latex -h XH 
++ trans -m -o latex -h LM|YO|HV|BB|DS|GD|HR|SJ|SB|ST|JV|FT|FH|FM|CJ|CE|BU|AH 
++ trans -m -o latex -h LM|YO|HV|BB|DS|GD|HR|SJ|SB|ST|JV|FT|FH|FM|CJ|CE|BU|AH -a 1P 
++ trans -m -o latex -h LM|YO|HV|BB|DS|GD|HR|SJ|SB|ST|JV|FT|FH|FM|CJ|CE|BU|AH -a AA 
++ trans -m -o latex -h LM|YO|HV|BB|DS|GD|HR|SJ|SB|ST|JV|FT|FH|FM|CJ|CE|BU|AH -a UA|1V|1C|1G 
++ trans -m -o latex -h LM|YO|HV|BB|DS|GD|HR|SJ|SB|ST|JV|FT|FH|FM|CJ|CE|BU|AH -a 1A 
++ trans -m -o latex -h LM 
++ trans -m -o latex -h LM -a 1P 
++ trans -m -o latex -h LM -a AA 
++ trans -m -o latex -h LM -a UA|1V|1C|1G 
++ trans -m -o latex -h LM -a 1A 
++ trans -m -o latex -h LM -a WB|MS 
++ trans -m -o latex -h HV 
++ trans -m -o latex -h HV -a 1P 
++ trans -m -o latex -h HV -a AA 
++ trans -m -o latex -h HV -a UA|1V|1C|1G 
++ trans -m -o latex -h HV -a 1A 
++ trans -m -o latex -h HV -a WB|MS 
++ trans -m -o latex -h BB 
++ trans -m -o latex -h BB -a 1P 
++ trans -m -o latex -h BB -a AA 
++ trans -m -o latex -h BB -a UA|1V|1C|1G 
++ trans -m -o latex -h BB -a 1A 
++ trans -m -o latex -h BB -a WB|MS 
++ trans -m -o latex -h DS 
++ trans -m -o latex -h DS -a 1P 
++ trans -m -o latex -h DS -a AA 
++ trans -m -o latex -h DS -a UA|1V|1C|1G 
++ trans -m -o latex -h DS -a 1A 
++ trans -m -o latex -h DS -a WB|MS 
++ trans -m -o latex -h GD 
++ trans -m -o latex -h GD -a 1P 
++ trans -m -o latex -h GD -a AA 
++ trans -m -o latex -h GD -a UA|1V|1C|1G 
++ trans -m -o latex -h GD -a 1A 
++ trans -m -o latex -h GD -a WB|MS 
++ trans -m -o latex -h HR 
++ trans -m -o latex -h HR -a 1P 
++ trans -m -o latex -h HR -a AA 
++ trans -m -o latex -h HR -a UA|1V|1C|1G 
++ trans -m -o latex -h HR -a 1A 
++ trans -m -o latex -h HR -a WB|MS 
++ trans -m -o latex -h SJ 
++ trans -m -o latex -h SJ -a 1P 
++ trans -m -o latex -h SJ -a AA 
++ trans -m -o latex -h SJ -a UA|1V|1C|1G 
++ trans -m -o latex -h SJ -a 1A 
++ trans -m -o latex -h SJ -a WB|MS 
++ trans -m -o latex -h SB 
++ trans -m -o latex -h SB -a 1P 
++ trans -m -o latex -h SB -a AA 
++ trans -m -o latex -h SB -a UA|1V|1C|1G 
++ trans -m -o latex -h SB -a 1A 
++ trans -m -o latex -h SB -a WB|MS 
++ trans -m -o latex -h ST 
++ trans -m -o latex -h ST -a 1P 
++ trans -m -o latex -h ST -a AA 
++ trans -m -o latex -h ST -a UA|1V|1C|1G 
++ trans -m -o latex -h ST -a 1A 
++ trans -m -o latex -h ST -a WB|MS 
++ trans -m -o latex -h YO 
++ trans -m -o latex -h YO -a 1P 
++ trans -m -o latex -h YO -a AA 
++ trans -m -o latex -h YO -a UA|1V|1C|1G 
++ trans -m -o latex -h YO -a 1A 
++ trans -m -o latex -h YO -a WB|MS 
++ trans -m -o latex -h JV 
++ trans -m -o latex -h JV -a 1P 
++ trans -m -o latex -h JV -a AA 
++ trans -m -o latex -h JV -a UA|1V|1C|1G 
++ trans -m -o latex -h JV -a 1A 
++ trans -m -o latex -h JV -a WB|MS 
++ trans -m -o latex -h FT 
++ trans -m -o latex -h FT -a 1P 
++ trans -m -o latex -h FT -a AA 
++ trans -m -o latex -h FT -a UA|1V|1C|1G 
++ trans -m -o latex -h FT -a 1A 
++ trans -m -o latex -h FT -a WB|MS 
++ trans -m -o latex -h FH|FM 
++ trans -m -o latex -h FH|FM -a 1P 
++ trans -m -o latex -h FH|FM -a AA 
++ trans -m -o latex -h FH|FM -a UA|1V|1C|1G 
++ trans -m -o latex -h FH|FM -a 1A 
++ trans -m -o latex -h FH|FM -a WB|MS 
++ trans -m -o latex -h CJ 
++ trans -m -o latex -h CJ -a 1P 
++ trans -m -o latex -h CJ -a AA 
++ trans -m -o latex -h CJ -a UA|1V|1C|1G 
++ trans -m -o latex -h CJ -a 1A 
++ trans -m -o latex -h CJ -a WB|MS 
++ trans -m -o latex -h CE 
++ trans -m -o latex -h CE -a 1P 
++ trans -m -o latex -h CE -a AA 
++ trans -m -o latex -h CE -a UA|1V|1C|1G 
++ trans -m -o latex -h CE -a 1A 
++ trans -m -o latex -h CE -a WB|MS 
++ trans -m -o latex -h BU 
++ trans -m -o latex -h BU -a 1P 
++ trans -m -o latex -h BU -a AA 
++ trans -m -o latex -h BU -a UA|1V|1C|1G 
++ trans -m -o latex -h BU -a 1A 
++ trans -m -o latex -h BU -a WB|MS 
++ trans -m -o latex -h AH 
++ trans -m -o latex -h AH -a 1P 
++ trans -m -o latex -h AH -a AA 
++ trans -m -o latex -h AH -a UA|1V|1C|1G 
++ trans -m -o latex -h AH -a 1A 
++ trans -m -o latex -h AH -a WB|MS 
++ trans -m -o latex -h LQ 
++ trans -m -o latex -h LS 
++ trans -m -o latex -h LZ 
++ trans -m -o latex -h MB|MC|BR|CY|ET|RC|RZ|FN|FI|TO|XV|NR 
++ trans -m -o latex -h MB 
++ trans -m -o latex -h MC 
++ trans -m -o latex -h BR 
++ trans -m -o latex -h CY 
++ trans -m -o latex -h ET 
++ trans -m -o latex -h RC 
++ trans -m -o latex -h RZ 
++ trans -m -o latex -h TO 
++ trans -m -o latex -h XV 
++ trans -m -o latex -h FN|FI 
++ trans -m -o latex -h NR 
++ trans -m -o latex -h CH|CC|CR|CI|EO|FW|FZ|MZ|QI|RI|RY|SZ 
++ trans -m -o latex -h CH|CC|CR 
++ trans -m -o latex -h CI 
++ trans -m -o latex -h EO 
++ trans -m -o latex -h FW 
++ trans -m -o latex -h FZ 
++ trans -m -o latex -h MZ 
++ trans -m -o latex -h QI 
++ trans -m -o latex -h RI|RY 
++ trans -m -o latex -h SZ 
++ trans -m -o latex -h OC 
++ trans -m -o latex -h OM|MH 
++ trans -m -o latex -h OM 
++ trans -m -o latex -h MH 
++ trans -m -o latex -h PH|TR|PF|MK|TX|MO|SL|AP 
++ trans -m -o latex -h PH 
++ trans -m -o latex -h TR 
++ trans -m -o latex -h PF 
++ trans -m -o latex -h MK 
++ trans -m -o latex -h TX 
++ trans -m -o latex -h MO 
++ trans -m -o latex -h SL 
++ trans -m -o latex -h AP 
++ trans -m -o latex -h RF|RV 
++ trans -m -o latex -h RX|RN 
++ trans -m -o latex -h SI|GX|WI|WH 
++ trans -m -o latex -h SI 
++ trans -m -o latex -h GX 
++ trans -m -o latex -h WI 
++ trans -m -o latex -h WH 
++ trans -m -o latex -h SM|ME|ML 
++ trans -m -o latex -h SM 
++ trans -m -o latex -h ME 
++ trans -m -o latex -h ML 
++ trans -m -o latex -h SN|SO 
++ trans -m -o latex -h UE 
++ trans -m -o latex -h UI|AN|AZ|CM|CO|GT|HE|LV|MR|RH|SH|SR|XL|TJ|WK|QM|YR|UC 
++ trans -m -o latex -h UI 
++ trans -m -o latex -h AN 
++ trans -m -o latex -h AZ 
++ trans -m -o latex -h CM 
++ trans -m -o latex -h CO 
++ trans -m -o latex -h GT 
++ trans -m -o latex -h HE 
++ trans -m -o latex -h LV 
++ trans -m -o latex -h MR 
++ trans -m -o latex -h RH 
++ trans -m -o latex -h SH 
++ trans -m -o latex -h SR 
++ trans -m -o latex -h XL 
++ trans -m -o latex -h TJ 
++ trans -m -o latex -h WK 
++ trans -m -o latex -h QM 
++ trans -m -o latex -h YR 
++ trans -m -o latex -h UC 
++ trans -m -o latex -h UZ|LE|ER|JU|EL|JH 
++ trans -m -o latex -h UZ 
++ trans -m -o latex -h LE 
++ trans -m -o latex -h ER 
++ trans -m -o latex -h JU 
++ trans -m -o latex -h EL 
++ trans -m -o latex -h JH 
++ trans -m -o latex -h TI 
++ trans -m -o latex -h TI -a 1P 
++ trans -m -o latex -h TI -a AA 
++ trans -m -o latex -h TI -a UA|1V|1C|1G 
++ trans -m -o latex -h TI -a 1A 
++ trans -m -o latex -h TI -a WB|MS 
++ trans -m -o latex -h WM 
++ trans -m -o latex -h WM -a AA 
++ trans -m -o latex -h WM -a UA 
++ trans -m -o latex -h WM -a 1P 
++ trans -m -o latex -h WR|BE|WB|WW|MU|AJ|WL|TP|SG|NK|QC|RR|YS|DR|DV|DN|DA|HF|LW|PW|KI|VY|PK|DC 
++ trans -m -o latex -h WR 
++ trans -m -o latex -h WW 
++ trans -m -o latex -h WB 
++ trans -m -o latex -h BE 
++ trans -m -o latex -h MU 
++ trans -m -o latex -h AJ 
++ trans -m -o latex -h WL 
++ trans -m -o latex -h SG 
++ trans -m -o latex -h NK 
++ trans -m -o latex -h QC 
++ trans -m -o latex -h RR 
++ trans -m -o latex -h DA 
++ trans -m -o latex -h DN 
++ trans -m -o latex -h DR 
++ trans -m -o latex -h DV 
++ trans -m -o latex -h TP 
++ trans -m -o latex -h YS 
++ trans -m -o latex -h LW 
++ trans -m -o latex -h VY 
++ trans -m -o latex -h PW 
++ trans -m -o latex -h KI 
++ trans -m -o latex -h PK 
++ trans -m -o latex -h DC 
++ trans -m -o latex -h HF 
++ trans -m -o latex -h NO 
++ trans -m -o latex -h WY|KL|GH|GN|SS|US 
++ trans -m -o latex -h WY 
++ trans -m -o latex -h KL 
++ trans -m -o latex -h GH 
++ trans -m -o latex -h GN 
++ trans -m -o latex -h SS 
++ trans -m -o latex -h US 
++ mailx -s latex1 printouts Charles.Terrell@pegsinc.com Chris.Munchrath@pegsinc.com Ted.Lankford@pegsinc.com Mike.Watson@pegsinc.com 
++ sleep 900 
++ mailx -s latex1 printouts Charles.Terrell@pegsinc.com Chris.Munchrath@pegsinc.com Ted.Lankford@pegsinc.com Mike.Watson@pegsinc.com 
++ date 
++ echo The latex1.sh reports finished generating at  Thu Jul 6 02:01:54 GMT 2000 
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+junk in database: DIRECTION "B"
+WARNING: Negative time.
+-2:  IQ AA 	1254372182 1254372181 1254372183 1254372182
+WARNING: Negative time.
+-2:  RL UA 	1254427189 1254427188 1254427190 1254427189
+WARNING: Negative time.
+-2:  HL 1A 	1254472568 1254472567 1254472570 1254472569
+WARNING: Negative time.
+-2:  SI UA 	1254498798 1254498797 1254498799 1254498798
+WARNING: Negative time.
+-2:  RA 1P 	1254498933 1254498932 1254498940 1254498939
+WARNING: Negative time.
+-2:  RL HD 	1254593421 1254593420 1254593422 1254593421
+WARNING: Negative time.
+-2:  FS AA 	1254614210 1254614209 1254614211 1254614210
+WARNING: Negative time.
+-2:  RL WB 	1254627928 1254627927 1254627930 1254627929
+WARNING: Negative time.
+-2:  KY 1A 	1254736447 1254736446 1254736451 1254736450
+WARNING: Negative time.
+-2:  RT WB 	1254747922 1254747921 1254747923 1254747922
+WARNING: Negative time.
+-2:  FS AA 	1254752563 1254752562 1254752564 1254752563
+WARNING: Negative time.
+-2:  WY AA 	1254804313 1254804312 1254804314 1254804313
+WARNING: Negative time.
+-2:  SH 1A 	1254812779 1254812778 1254812780 1254812779
+WARNING: Negative time.
+-2:  SM 1A 	1254827168 1254827167 1254827169 1254827168
+WARNING: Negative time.
+-2:  SK 1A 	1254832515 1254832514 1254832516 1254832515
+WARNING: Negative time.
+-2:  AQ 1P 	1254840037 1254840036 1254840038 1254840037
+WARNING: Negative time.
+-2:  HY 1P 	1254853724 1254853723 1254853725 1254853724
+WARNING: Negative time.
+-2:  DE UA 	1254857589 1254857588 1254857591 1254857590
+WARNING: Negative time.
+-2:  HH WB 	1254863954 1254863953 1254863955 1254863954
+WARNING: Negative time.
+-2:  IQ AA 	1254878276 1254878275 1254878277 1254878276
+WARNING: Negative time.
+-2:  RA UA 	1254904972 1254904971 1254904973 1254904972
+WARNING: Negative time.
+-2:  RT AA 	1254914038 1254914037 1254914039 1254914038
+WARNING: Negative time.
+-2:  SH 1A 	1254920664 1254920663 1254920665 1254920664
+WARNING: Negative time.
+-2:  LE AA 	1254940310 1254940309 1254940311 1254940310
+WARNING: Negative time.
+-2:  HY AA 	1254941259 1254941258 1254941260 1254941259
+WARNING: Negative time.
+-2:  RL AA 	1254946791 1254946790 1254946792 1254946791
+WARNING: Negative time.
+-2:  DE 1A 	1254951669 1254951668 1254951671 1254951670
+WARNING: Negative time.
+-2:  YR 1A 	1254993567 1254993566 1254993569 1254993568
+WARNING: Negative time.
+-2:  WY AA 	1255010135 1255010134 1255010136 1255010135
+WARNING: Negative time.
+-2:  HY 1P 	1255033073 1255033072 1255033074 1255033073
+WARNING: Negative time.
+-2:  HY 1P 	1255127884 1255127883 1255127885 1255127884
+WARNING: Negative time.
+-2:  HH WB 	1255227894 1255227893 1255227895 1255227894
+WARNING: Negative time.
+-2:  FA 1P 	1255309694 1255309693 1255309696 1255309695
+WARNING: Negative time.
+-2:  PF UA 	1255339447 1255339446 1255339448 1255339447
+WARNING: Negative time.
+-2:  SH 1A 	1255356067 1255356066 1255356068 1255356067
+WARNING: Negative time.
+-2:  WI WB 	1255368566 1255368565 1255368568 1255368567
+WARNING: Negative time.
+-2:  WH HD 	1255390100 1255390099 1255390101 1255390100
+WARNING: Negative time.
+-2:  IQ AA 	1255402717 1255402716 1255402718 1255402717
+WARNING: Negative time.
+-2:  DX UA 	1255403469 1255403468 1255403470 1255403469
+WARNING: Negative time.
+-2:  SH 1A 	1255418392 1255418391 1255418393 1255418392
+WARNING: Negative time.
+-2:  UZ UA 	1255426691 1255426690 1255426694 1255426693
+WARNING: Negative time.
+-2:  FS AA 	1255442551 1255442550 1255442552 1255442551
+WARNING: Negative time.
+-2:  FS AA 	1255451319 1255451318 1255451320 1255451319
+WARNING: Negative time.
+-2:  PF UA 	1255478463 1255478462 1255478464 1255478463
+WARNING: Negative time.
+-2:  SH 1A 	1255523742 1255523741 1255523743 1255523742
+WARNING: Negative time.
+-2:  WY AA 	1255542379 1255542378 1255542380 1255542379
+WARNING: Negative time.
+-2:  DE AA 	1255551929 1255551928 1255551931 1255551930
+WARNING: Negative time.
+-2:  YX 1A 	1255605421 1255605420 1255605422 1255605421
+WARNING: Negative time.
+-2:  IQ UA 	1255658172 1255658171 1255658173 1255658172
+WARNING: Negative time.
+-2:  GG UA 	1255685649 1255685648 1255685650 1255685649
+WARNING: Negative time.
+-2:  SH 1A 	1255694601 1255694600 1255694602 1255694601
+WARNING: Negative time.
+-2:  KY WB 	1255703055 1255703054 1255703058 1255703057
+WARNING: Negative time.
+-2:  SH 1A 	1255706447 1255706446 1255706448 1255706447
+WARNING: Negative time.
+-2:  FA AA 	1255708985 1255708984 1255708987 1255708986
+WARNING: Negative time.
+-2:  HY UA 	1255715721 1255715720 1255715722 1255715721
+WARNING: Negative time.
+-2:  WI UA 	1255943100 1255943099 1255943101 1255943100
+WARNING: Negative time.
+-2:  HY 1P 	1255959994 1255959993 1255959995 1255959994
+WARNING: Negative time.
+-2:  CX UA 	1255969343 1255969342 1255969344 1255969343
+WARNING: Negative time.
+-2:  WI 1P 	1255985486 1255985485 1255985487 1255985486
+WARNING: Negative time.
+-2:  LZ AA 	1255988257 1255988256 1255988258 1255988257
+WARNING: Negative time.
+-2:  WI AA 	1255989289 1255989288 1255989290 1255989289
+WARNING: Negative time.
+-2:  DW AA 	1256010352 1256010351 1256010354 1256010353
+WARNING: Negative time.
+-2:  IQ UA 	1256030003 1256030002 1256030012 1256030011
+WARNING: Negative time.
+-2:  DV 1A 	1256035298 1256035297 1256035302 1256035301
+WARNING: Negative time.
+-2:  MD UA 	1256118942 1256118941 1256118944 1256118943
+WARNING: Negative time.
+-2:  KI 1A 	1256121444 1256121443 1256121445 1256121444
+WARNING: Negative time.
+-2:  KY 1A 	1256130623 1256130622 1256130627 1256130626
+WARNING: Negative time.
+-2:  SI UA 	1256172066 1256172065 1256172067 1256172066
+WARNING: Negative time.
+-2:  FS 1A 	1256209780 1256209779 1256209781 1256209780
+WARNING: Negative time.
+-2:  SI AA 	1256220204 1256220203 1256220205 1256220204
+WARNING: Negative time.
+-2:  IQ AA 	1256224523 1256224522 1256224524 1256224523
+WARNING: Negative time.
+-2:  MU WB 	1256248350 1256248349 1256248351 1256248350
+WARNING: Negative time.
+-2:  SH 1A 	1256281176 1256281175 1256281177 1256281176
+WARNING: Negative time.
+-2:  SL 1A 	1256290132 1256290131 1256290134 1256290133
+WARNING: Negative time.
+-2:  WH UA 	1256296890 1256296889 1256296893 1256296892
+WARNING: Negative time.
+-2:  CG UA 	1256299511 1256299510 1256299512 1256299511
+WARNING: Negative time.
+-2:  DV 1A 	1256302263 1256302262 1256302264 1256302263
+WARNING: Negative time.
+-2:  SI 1A 	1256305631 1256305630 1256305632 1256305631
+WARNING: Negative time.
+-2:  WI WB 	1256448325 1256448324 1256448326 1256448325
+WARNING: Negative time.
+-2:  DE WB 	1256487116 1256487115 1256487118 1256487117
+WARNING: Negative time.
+-2:  DW AA 	1256496878 1256496877 1256496888 1256496887
+WARNING: Negative time.
+-2:  DV 1P 	1256556455 1256556454 1256556456 1256556455
+WARNING: Negative time.
+-2:  CD 1A 	1256576651 1256576650 1256576653 1256576652
+WARNING: Negative time.
+-2:  RL WB 	1256579321 1256579320 1256579322 1256579321
+WARNING: Negative time.
+-2:  MD 1A 	1256615563 1256615562 1256615564 1256615563
+WARNING: Negative time.
+-2:  RA UA 	1256634198 1256634197 1256634199 1256634198
+WARNING: Negative time.
+-2:  YX WB 	1256643986 1256643985 1256643987 1256643986
+WARNING: Negative time.
+-2:  RA 1A 	1256647878 1256647877 1256647879 1256647878
+WARNING: Negative time.
+-2:  DV UA 	1256657581 1256657580 1256657582 1256657581
+WARNING: Negative time.
+-2:  RA 1A 	1256659157 1256659156 1256659158 1256659157
+WARNING: Negative time.
+-2:  YX 1P 	1256673303 1256673302 1256673305 1256673304
+WARNING: Negative time.
+-2:  TI 1A 	1256732136 1256732135 1256732137 1256732136
+WARNING: Negative time.
+-2:  DV UA 	1256735415 1256735414 1256735416 1256735415
+WARNING: Negative time.
+-2:  SH 1A 	1256736562 1256736561 1256736563 1256736562
+WARNING: Negative time.
+-2:  RL 1P 	1256850663 1256850662 1256850668 1256850667
+WARNING: Negative time.
+-2:  SH 1A 	1256895053 1256895052 1256895055 1256895054
+WARNING: Negative time.
+-2:  WI 1A 	1256896084 1256896083 1256896085 1256896084
+WARNING: Negative time.
+-2:  RA AA 	1256949569 1256949568 1256949570 1256949569
+WARNING: Negative time.
+-2:  CD 1A 	1256576651 1256576650 1256576653 1256576652
+WARNING: Negative time.
+-2:  CG UA 	1256299511 1256299510 1256299512 1256299511
+WARNING: Negative time.
+-2:  DE UA 	1254857589 1254857588 1254857591 1254857590
+WARNING: Negative time.
+-2:  DE 1A 	1254951669 1254951668 1254951671 1254951670
+WARNING: Negative time.
+-2:  DE AA 	1255551929 1255551928 1255551931 1255551930
+WARNING: Negative time.
+-2:  DE WB 	1256487116 1256487115 1256487118 1256487117
+WARNING: Negative time.
+-2:  DV 1A 	1256035298 1256035297 1256035302 1256035301
+WARNING: Negative time.
+-2:  DV 1A 	1256302263 1256302262 1256302264 1256302263
+WARNING: Negative time.
+-2:  DV 1P 	1256556455 1256556454 1256556456 1256556455
+WARNING: Negative time.
+-2:  DV UA 	1256657581 1256657580 1256657582 1256657581
+WARNING: Negative time.
+-2:  DV UA 	1256735415 1256735414 1256735416 1256735415
+WARNING: Negative time.
+-2:  DW AA 	1256010352 1256010351 1256010354 1256010353
+WARNING: Negative time.
+-2:  DW AA 	1256496878 1256496877 1256496888 1256496887
+WARNING: Negative time.
+-2:  YR 1A 	1254993567 1254993566 1254993569 1254993568
+WARNING: Negative time.
+-2:  FA 1P 	1255309694 1255309693 1255309696 1255309695
+WARNING: Negative time.
+-2:  FA AA 	1255708985 1255708984 1255708987 1255708986
+WARNING: Negative time.
+-2:  SL 1A 	1256290132 1256290131 1256290134 1256290133
+WARNING: Negative time.
+-2:  FS AA 	1254614210 1254614209 1254614211 1254614210
+WARNING: Negative time.
+-2:  FS AA 	1254752563 1254752562 1254752564 1254752563
+WARNING: Negative time.
+-2:  FS AA 	1255442551 1255442550 1255442552 1255442551
+WARNING: Negative time.
+-2:  FS AA 	1255451319 1255451318 1255451320 1255451319
+WARNING: Negative time.
+-2:  FS 1A 	1256209780 1256209779 1256209781 1256209780
+WARNING: Negative time.
+-2:  HL 1A 	1254472568 1254472567 1254472570 1254472569
+WARNING: Negative time.
+-2:  HH WB 	1254863954 1254863953 1254863955 1254863954
+WARNING: Negative time.
+-2:  HH WB 	1255227894 1255227893 1255227895 1255227894
+WARNING: Negative time.
+-2:  HY 1P 	1254853724 1254853723 1254853725 1254853724
+WARNING: Negative time.
+-2:  HY AA 	1254941259 1254941258 1254941260 1254941259
+WARNING: Negative time.
+-2:  HY 1P 	1255033073 1255033072 1255033074 1255033073
+WARNING: Negative time.
+-2:  HY 1P 	1255127884 1255127883 1255127885 1255127884
+WARNING: Negative time.
+-2:  HY UA 	1255715721 1255715720 1255715722 1255715721
+WARNING: Negative time.
+-2:  HY 1P 	1255959994 1255959993 1255959995 1255959994
+WARNING: Negative time.
+-2:  IQ AA 	1254372182 1254372181 1254372183 1254372182
+WARNING: Negative time.
+-2:  SK 1A 	1254832515 1254832514 1254832516 1254832515
+WARNING: Negative time.
+-2:  IQ AA 	1254878276 1254878275 1254878277 1254878276
+WARNING: Negative time.
+-2:  PF UA 	1255339447 1255339446 1255339448 1255339447
+WARNING: Negative time.
+-2:  IQ AA 	1255402717 1255402716 1255402718 1255402717
+WARNING: Negative time.
+-2:  PF UA 	1255478463 1255478462 1255478464 1255478463
+WARNING: Negative time.
+-2:  IQ UA 	1255658172 1255658171 1255658173 1255658172
+WARNING: Negative time.
+-2:  IQ UA 	1256030003 1256030002 1256030012 1256030011
+WARNING: Negative time.
+-2:  KI 1A 	1256121444 1256121443 1256121445 1256121444
+WARNING: Negative time.
+-2:  IQ AA 	1256224523 1256224522 1256224524 1256224523
+WARNING: Negative time.
+-2:  KY 1A 	1254736447 1254736446 1254736451 1254736450
+WARNING: Negative time.
+-2:  KY WB 	1255703055 1255703054 1255703058 1255703057
+WARNING: Negative time.
+-2:  KY 1A 	1256130623 1256130622 1256130627 1256130626
+WARNING: Negative time.
+-2:  LZ AA 	1255988257 1255988256 1255988258 1255988257
+WARNING: Negative time.
+-2:  AQ 1P 	1254840037 1254840036 1254840038 1254840037
+WARNING: Negative time.
+-2:  LE AA 	1254940310 1254940309 1254940311 1254940310
+WARNING: Negative time.
+-2:  DX UA 	1255403469 1255403468 1255403470 1255403469
+WARNING: Negative time.
+-2:  YX 1A 	1255605421 1255605420 1255605422 1255605421
+WARNING: Negative time.
+-2:  GG UA 	1255685649 1255685648 1255685650 1255685649
+WARNING: Negative time.
+-2:  MU WB 	1256248350 1256248349 1256248351 1256248350
+WARNING: Negative time.
+-2:  YX WB 	1256643986 1256643985 1256643987 1256643986
+WARNING: Negative time.
+-2:  YX 1P 	1256673303 1256673302 1256673305 1256673304
+WARNING: Negative time.
+-2:  RA 1P 	1254498933 1254498932 1254498940 1254498939
+WARNING: Negative time.
+-2:  RA UA 	1254904972 1254904971 1254904973 1254904972
+WARNING: Negative time.
+-2:  RA UA 	1256634198 1256634197 1256634199 1256634198
+WARNING: Negative time.
+-2:  RA 1A 	1256647878 1256647877 1256647879 1256647878
+WARNING: Negative time.
+-2:  RA 1A 	1256659157 1256659156 1256659158 1256659157
+WARNING: Negative time.
+-2:  RA AA 	1256949569 1256949568 1256949570 1256949569
+WARNING: Negative time.
+-2:  CX UA 	1255969343 1255969342 1255969344 1255969343
+WARNING: Negative time.
+-2:  UZ UA 	1255426691 1255426690 1255426694 1255426693
+WARNING: Negative time.
+-2:  RT WB 	1254747922 1254747921 1254747923 1254747922
+WARNING: Negative time.
+-2:  RT AA 	1254914038 1254914037 1254914039 1254914038
+WARNING: Negative time.
+-2:  SH 1A 	1254812779 1254812778 1254812780 1254812779
+WARNING: Negative time.
+-2:  SH 1A 	1254920664 1254920663 1254920665 1254920664
+WARNING: Negative time.
+-2:  SH 1A 	1255356067 1255356066 1255356068 1255356067
+WARNING: Negative time.
+-2:  SH 1A 	1255418392 1255418391 1255418393 1255418392
+WARNING: Negative time.
+-2:  SH 1A 	1255523742 1255523741 1255523743 1255523742
+WARNING: Negative time.
+-2:  SH 1A 	1255694601 1255694600 1255694602 1255694601
+WARNING: Negative time.
+-2:  SH 1A 	1255706447 1255706446 1255706448 1255706447
+WARNING: Negative time.
+-2:  SH 1A 	1256281176 1256281175 1256281177 1256281176
+WARNING: Negative time.
+-2:  SH 1A 	1256736562 1256736561 1256736563 1256736562
+WARNING: Negative time.
+-2:  SH 1A 	1256895053 1256895052 1256895055 1256895054
+WARNING: Negative time.
+-2:  SI UA 	1254498798 1254498797 1254498799 1254498798
+WARNING: Negative time.
+-2:  WI WB 	1255368566 1255368565 1255368568 1255368567
+WARNING: Negative time.
+-2:  WH HD 	1255390100 1255390099 1255390101 1255390100
+WARNING: Negative time.
+-2:  WI UA 	1255943100 1255943099 1255943101 1255943100
+WARNING: Negative time.
+-2:  WI 1P 	1255985486 1255985485 1255985487 1255985486
+WARNING: Negative time.
+-2:  WI AA 	1255989289 1255989288 1255989290 1255989289
+WARNING: Negative time.
+-2:  MD UA 	1256118942 1256118941 1256118944 1256118943
+WARNING: Negative time.
+-2:  SI UA 	1256172066 1256172065 1256172067 1256172066
+WARNING: Negative time.
+-2:  SI AA 	1256220204 1256220203 1256220205 1256220204
+WARNING: Negative time.
+-2:  WH UA 	1256296890 1256296889 1256296893 1256296892
+WARNING: Negative time.
+-2:  SI 1A 	1256305631 1256305630 1256305632 1256305631
+WARNING: Negative time.
+-2:  WI WB 	1256448325 1256448324 1256448326 1256448325
+WARNING: Negative time.
+-2:  MD 1A 	1256615563 1256615562 1256615564 1256615563
+WARNING: Negative time.
+-2:  WI 1A 	1256896084 1256896083 1256896085 1256896084
+WARNING: Negative time.
+-2:  SM 1A 	1254827168 1254827167 1254827169 1254827168
+WARNING: Negative time.
+-2:  TI 1A 	1256732136 1256732135 1256732137 1256732136
+WARNING: Negative time.
+-2:  RL UA 	1254427189 1254427188 1254427190 1254427189
+WARNING: Negative time.
+-2:  RL HD 	1254593421 1254593420 1254593422 1254593421
+WARNING: Negative time.
+-2:  RL WB 	1254627928 1254627927 1254627930 1254627929
+WARNING: Negative time.
+-2:  RL AA 	1254946791 1254946790 1254946792 1254946791
+WARNING: Negative time.
+-2:  RL WB 	1256579321 1256579320 1256579322 1256579321
+WARNING: Negative time.
+-2:  RL 1P 	1256850663 1256850662 1256850668 1256850667
+WARNING: Negative time.
+-2:  WY AA 	1254804313 1254804312 1254804314 1254804313
+WARNING: Negative time.
+-2:  WY AA 	1255010135 1255010134 1255010136 1255010135
+WARNING: Negative time.
+-2:  WY AA 	1255542379 1255542378 1255542380 1255542379
+WARNING: Negative time.
+-2:  RA 1P 	1254498933 1254498932 1254498940 1254498939
+WARNING: Negative time.
+-2:  AQ 1P 	1254840037 1254840036 1254840038 1254840037
+WARNING: Negative time.
+-2:  HY 1P 	1254853724 1254853723 1254853725 1254853724
+WARNING: Negative time.
+-2:  HY 1P 	1255033073 1255033072 1255033074 1255033073
+WARNING: Negative time.
+-2:  HY 1P 	1255127884 1255127883 1255127885 1255127884
+WARNING: Negative time.
+-2:  FA 1P 	1255309694 1255309693 1255309696 1255309695
+WARNING: Negative time.
+-2:  HY 1P 	1255959994 1255959993 1255959995 1255959994
+WARNING: Negative time.
+-2:  WI 1P 	1255985486 1255985485 1255985487 1255985486
+WARNING: Negative time.
+-2:  DV 1P 	1256556455 1256556454 1256556456 1256556455
+WARNING: Negative time.
+-2:  YX 1P 	1256673303 1256673302 1256673305 1256673304
+WARNING: Negative time.
+-2:  RL 1P 	1256850663 1256850662 1256850668 1256850667
+WARNING: Negative time.
+-2:  RL WB 	1254627928 1254627927 1254627930 1254627929
+WARNING: Negative time.
+-2:  RT WB 	1254747922 1254747921 1254747923 1254747922
+WARNING: Negative time.
+-2:  HH WB 	1254863954 1254863953 1254863955 1254863954
+WARNING: Negative time.
+-2:  HH WB 	1255227894 1255227893 1255227895 1255227894
+WARNING: Negative time.
+-2:  WI WB 	1255368566 1255368565 1255368568 1255368567
+WARNING: Negative time.
+-2:  KY WB 	1255703055 1255703054 1255703058 1255703057
+WARNING: Negative time.
+-2:  MU WB 	1256248350 1256248349 1256248351 1256248350
+WARNING: Negative time.
+-2:  WI WB 	1256448325 1256448324 1256448326 1256448325
+WARNING: Negative time.
+-2:  DE WB 	1256487116 1256487115 1256487118 1256487117
+WARNING: Negative time.
+-2:  RL WB 	1256579321 1256579320 1256579322 1256579321
+WARNING: Negative time.
+-2:  YX WB 	1256643986 1256643985 1256643987 1256643986
+WARNING: Negative time.
+-2:  IQ AA 	1254372182 1254372181 1254372183 1254372182
+WARNING: Negative time.
+-2:  FS AA 	1254614210 1254614209 1254614211 1254614210
+WARNING: Negative time.
+-2:  FS AA 	1254752563 1254752562 1254752564 1254752563
+WARNING: Negative time.
+-2:  WY AA 	1254804313 1254804312 1254804314 1254804313
+WARNING: Negative time.
+-2:  IQ AA 	1254878276 1254878275 1254878277 1254878276
+WARNING: Negative time.
+-2:  RT AA 	1254914038 1254914037 1254914039 1254914038
+WARNING: Negative time.
+-2:  LE AA 	1254940310 1254940309 1254940311 1254940310
+WARNING: Negative time.
+-2:  HY AA 	1254941259 1254941258 1254941260 1254941259
+WARNING: Negative time.
+-2:  RL AA 	1254946791 1254946790 1254946792 1254946791
+WARNING: Negative time.
+-2:  WY AA 	1255010135 1255010134 1255010136 1255010135
+WARNING: Negative time.
+-2:  IQ AA 	1255402717 1255402716 1255402718 1255402717
+WARNING: Negative time.
+-2:  FS AA 	1255442551 1255442550 1255442552 1255442551
+WARNING: Negative time.
+-2:  FS AA 	1255451319 1255451318 1255451320 1255451319
+WARNING: Negative time.
+-2:  WY AA 	1255542379 1255542378 1255542380 1255542379
+WARNING: Negative time.
+-2:  DE AA 	1255551929 1255551928 1255551931 1255551930
+WARNING: Negative time.
+-2:  FA AA 	1255708985 1255708984 1255708987 1255708986
+WARNING: Negative time.
+-2:  LZ AA 	1255988257 1255988256 1255988258 1255988257
+WARNING: Negative time.
+-2:  WI AA 	1255989289 1255989288 1255989290 1255989289
+WARNING: Negative time.
+-2:  DW AA 	1256010352 1256010351 1256010354 1256010353
+WARNING: Negative time.
+-2:  SI AA 	1256220204 1256220203 1256220205 1256220204
+WARNING: Negative time.
+-2:  IQ AA 	1256224523 1256224522 1256224524 1256224523
+WARNING: Negative time.
+-2:  DW AA 	1256496878 1256496877 1256496888 1256496887
+WARNING: Negative time.
+-2:  RA AA 	1256949569 1256949568 1256949570 1256949569
+WARNING: Negative time.
+-2:  HL 1A 	1254472568 1254472567 1254472570 1254472569
+WARNING: Negative time.
+-2:  KY 1A 	1254736447 1254736446 1254736451 1254736450
+WARNING: Negative time.
+-2:  SH 1A 	1254812779 1254812778 1254812780 1254812779
+WARNING: Negative time.
+-2:  SM 1A 	1254827168 1254827167 1254827169 1254827168
+WARNING: Negative time.
+-2:  SK 1A 	1254832515 1254832514 1254832516 1254832515
+WARNING: Negative time.
+-2:  SH 1A 	1254920664 1254920663 1254920665 1254920664
+WARNING: Negative time.
+-2:  DE 1A 	1254951669 1254951668 1254951671 1254951670
+WARNING: Negative time.
+-2:  YR 1A 	1254993567 1254993566 1254993569 1254993568
+WARNING: Negative time.
+-2:  SH 1A 	1255356067 1255356066 1255356068 1255356067
+WARNING: Negative time.
+-2:  SH 1A 	1255418392 1255418391 1255418393 1255418392
+WARNING: Negative time.
+-2:  SH 1A 	1255523742 1255523741 1255523743 1255523742
+WARNING: Negative time.
+-2:  YX 1A 	1255605421 1255605420 1255605422 1255605421
+WARNING: Negative time.
+-2:  SH 1A 	1255694601 1255694600 1255694602 1255694601
+WARNING: Negative time.
+-2:  SH 1A 	1255706447 1255706446 1255706448 1255706447
+WARNING: Negative time.
+-2:  DV 1A 	1256035298 1256035297 1256035302 1256035301
+WARNING: Negative time.
+-2:  KI 1A 	1256121444 1256121443 1256121445 1256121444
+WARNING: Negative time.
+-2:  KY 1A 	1256130623 1256130622 1256130627 1256130626
+WARNING: Negative time.
+-2:  FS 1A 	1256209780 1256209779 1256209781 1256209780
+WARNING: Negative time.
+-2:  SH 1A 	1256281176 1256281175 1256281177 1256281176
+WARNING: Negative time.
+-2:  SL 1A 	1256290132 1256290131 1256290134 1256290133
+WARNING: Negative time.
+-2:  DV 1A 	1256302263 1256302262 1256302264 1256302263
+WARNING: Negative time.
+-2:  SI 1A 	1256305631 1256305630 1256305632 1256305631
+WARNING: Negative time.
+-2:  CD 1A 	1256576651 1256576650 1256576653 1256576652
+WARNING: Negative time.
+-2:  MD 1A 	1256615563 1256615562 1256615564 1256615563
+WARNING: Negative time.
+-2:  RA 1A 	1256647878 1256647877 1256647879 1256647878
+WARNING: Negative time.
+-2:  RA 1A 	1256659157 1256659156 1256659158 1256659157
+WARNING: Negative time.
+-2:  TI 1A 	1256732136 1256732135 1256732137 1256732136
+WARNING: Negative time.
+-2:  SH 1A 	1256736562 1256736561 1256736563 1256736562
+WARNING: Negative time.
+-2:  SH 1A 	1256895053 1256895052 1256895055 1256895054
+WARNING: Negative time.
+-2:  WI 1A 	1256896084 1256896083 1256896085 1256896084
+WARNING: Negative time.
+-2:  RL UA 	1254427189 1254427188 1254427190 1254427189
+WARNING: Negative time.
+-2:  SI UA 	1254498798 1254498797 1254498799 1254498798
+WARNING: Negative time.
+-2:  DE UA 	1254857589 1254857588 1254857591 1254857590
+WARNING: Negative time.
+-2:  RA UA 	1254904972 1254904971 1254904973 1254904972
+WARNING: Negative time.
+-2:  PF UA 	1255339447 1255339446 1255339448 1255339447
+WARNING: Negative time.
+-2:  DX UA 	1255403469 1255403468 1255403470 1255403469
+WARNING: Negative time.
+-2:  UZ UA 	1255426691 1255426690 1255426694 1255426693
+WARNING: Negative time.
+-2:  PF UA 	1255478463 1255478462 1255478464 1255478463
+WARNING: Negative time.
+-2:  IQ UA 	1255658172 1255658171 1255658173 1255658172
+WARNING: Negative time.
+-2:  GG UA 	1255685649 1255685648 1255685650 1255685649
+WARNING: Negative time.
+-2:  HY UA 	1255715721 1255715720 1255715722 1255715721
+WARNING: Negative time.
+-2:  WI UA 	1255943100 1255943099 1255943101 1255943100
+WARNING: Negative time.
+-2:  CX UA 	1255969343 1255969342 1255969344 1255969343
+WARNING: Negative time.
+-2:  IQ UA 	1256030003 1256030002 1256030012 1256030011
+WARNING: Negative time.
+-2:  MD UA 	1256118942 1256118941 1256118944 1256118943
+WARNING: Negative time.
+-2:  SI UA 	1256172066 1256172065 1256172067 1256172066
+WARNING: Negative time.
+-2:  WH UA 	1256296890 1256296889 1256296893 1256296892
+WARNING: Negative time.
+-2:  CG UA 	1256299511 1256299510 1256299512 1256299511
+WARNING: Negative time.
+-2:  RA UA 	1256634198 1256634197 1256634199 1256634198
+WARNING: Negative time.
+-2:  DV UA 	1256657581 1256657580 1256657582 1256657581
+WARNING: Negative time.
+-2:  DV UA 	1256735415 1256735414 1256735416 1256735415
+WARNING: Negative time.
+-2:  RL HD 	1254593421 1254593420 1254593422 1254593421
+WARNING: Negative time.
+-2:  WH HD 	1255390100 1255390099 1255390101 1255390100

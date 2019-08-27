@@ -1,0 +1,1 @@
+find . -print | grep $1 | more

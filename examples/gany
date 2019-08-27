@@ -1,0 +1,27 @@
+#!/usr/bin/perl
+#directory list
+$dirs = `ls -l |grep '^d'`;
+#formatted directory list
+@list = split("\n",$dirs);
+
+foreach $dir(@list) {
+  $_ = $dir;
+#get individual dir name from dir long listing
+  @ip = split(" ",$_);
+#find sub dirs/types in each ip
+# $_ = `ls -l $ip[8] |grep '^d'`;
+  @types = split( "\n",$_ );
+#cycle thru each directory and type
+  foreach $type(@types) {
+    $_ = $type;
+#now for the good stuff...find the checked out files
+      $_ = `ls -al $ip[8]/sccs |gany.support`;
+      @one = split("\n");
+      foreach $sccs(@one) {
+        @pfile = split(" ",$sccs);
+        if ( $[ == 'p' ) {
+          print "$ip[8]/sccs/$pfile[8] by $pfile[2] on $pfile[5] $pfile[6] $pfile[7]\n";
+        }
+      }
+  }
+}

@@ -1,0 +1,16 @@
+Counters for KivaNet shared memory spinlock access
+  Low-level gate requests 146360245,  successes 118764254
+  Low-level spinning to gate:  none 84352,  some 2046,  spins 26221812
+  Low-level spinning to release:  none 57408102,  some 9428,  spins 1396784
+Counters for KivaNet shared memory backoff strategy
+  None required 38666267,  required 18664858,  failed 86148
+  Iterations through backoff loop: -1909677658
+# of processes ahead   when gate locked    when backoff started
+       0:                57331435                2812788
+       1:                   43976               15812153
+       2:                   23877                  22019
+       3:                   10417                   9811
+       4:                    4225                   4130
+       5:                    1567                   1660
+       6:                     811                    835
+    >= 7:                    1222                    756

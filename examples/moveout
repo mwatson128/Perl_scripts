@@ -1,0 +1,35 @@
+#!/bin/perl -w
+
+# move the IP versions in this dir to QA and UAT.
+
+# get filenames and versions.
+@list = `vcwhat *.rd`;
+chomp $list[1];
+chomp $list[3];
+@tmp_1 = split /\.rd\s/, $list[1];
+@tmp_2 = split /\.rd\s/, $list[3];
+
+$file_1 = $tmp_1[0];
+$file_2 = $tmp_2[0];
+$ver_1 = $tmp_1[1];
+$ver_2 = $tmp_2[1];
+
+
+$file_1 =~ s{\A\s*|\s*\z}{}gmsx; # remove leading and trailing whitespace
+$file_2 =~ s{\A\s*|\s*\z}{}gmsx; # remove leading and trailing whitespace
+$ver_1 =~ s{\A\s*|\s*\z}{}gmsx; # remove leading and trailing whitespace
+$ver_2 =~ s{\A\s*|\s*\z}{}gmsx; # remove leading and trailing whitespace
+
+# Now copy the files to right places.
+print " $file_1 to uat uswuatce03 ${file_1}_${ver_1}\n";
+`scp $file_1 uat\@uswuatce03:/uswuatce03/uat/uswbin/${file_1}_${ver_1}`;
+
+print " $file_2 to uat uswuatce03 ${file_2}_${ver_2}\n";
+`scp $file_2 uat\@uswuatce03:/uswuatce03/uat/uswbin/${file_2}_${ver_2}`;
+
+#print " $file_1 to qa uswuatce03 ${file_1}_${ver_1}\n";
+#`scp $file_1 qa\@uswuatce03:/uswuatce03/qa/uswbin/${file_1}_${ver_1}`;
+#
+#print " $file_2 to qa uswuatce03 ${file_2}_${ver_2}\n";
+#`scp $file_2 qa\@uswuatce03:/uswuatce03/qa/uswbin/${file_2}_${ver_2}`;
+

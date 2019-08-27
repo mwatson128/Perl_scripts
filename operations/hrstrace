@@ -1,0 +1,1004 @@
+#!/bin/perl
+
+use Getopt::Long;
+use Time::Local;
+use Data::Dumper;
+#use diagnostics;
+
+sub usageexit;
+sub cmdline;
+sub do_init;
+sub startTrace;
+sub fileNameInit;
+sub finishXdataMsg;
+sub finishRdataMsg;
+sub printSummary;
+sub printBuff;
+sub printEntUp;
+sub printEntDown;
+sub handleClose;
+sub handleDiagnose;
+sub printTrafMakeup;
+
+#####################################################################
+## Initialize variables
+##
+#####################################################################
+
+# Turn off buffering
+$| = 1;
+
+# Set debug
+$DEBUG = 0;
+$diagnose = 0;
+$iStartedTraces = 0;
+$startTime = 0;
+$printInter = 250;
+$ltfileSize = 100000000;
+
+# For main info hash
+$MSN = 0;
+$EXAMP = 0;
+$RQTYPE = 1;
+$RPTYPE = 2;
+$ERRTYPE = 3;
+$CONNNUM = 4;
+$RQMESG = 5;
+$RQTIME = 6;
+$RQTIMEUTC = 7;
+$RPMESG = 8;
+$RPTIME = 9;
+$RPTIMEUTC = 10;
+$SORTKEY = 11;
+
+$buf = "";
+$smesg = $isErr = 0;
+$isPalsErr = $isAalsErr = $isRpinErr = $isBookErr  = 0;
+$bookRq = $bookRp = $palsRq = $palsRp = $aalsRq = $aalsRp = 0;
+$rpinRq = $rpinRp = 0;
+$dashP = 1;
+$dashP = 0;
+
+# minutely counters
+$minAalsRq = $minPalsRq = $minBookRq = $minRpinRq = 0;
+$minAalsRp = $minPalsRp = $minBookRp = $minRpinRp = 0;
+$minReqTot = $minResTot = $msgDateTimeStamp = $printTrafTime = 0;
+$minOfLog = 1;
+
+$uid=`/bin/id | cut -d"(" -f2 | cut -d")" -f1`;
+chomp $uid;
+
+@mlchn = qw(1A-A 1A2-A 1A-B AA-A AA2-A AA3-A AA4-A AA-B WS-A WS2-A WS-B
+            MC-B);
+@wzchn = qw(CG-A CG-B IL-B P2-A P2-B P2W-A P2W-B RD-A RD-B RH-A RH-B RT-A
+            RT-B S2-A S2-B TR-A TR-B UU-A UU-B UV-A UV-B ZS-A ZS-B);
+@imqchn = qw(A1W-A MCW-A TAW-A HIW-A JKX-A RTX-A XTX-A HIX-A MCX-A MCY-A JKY-A
+             RTY-A XTY-A HIY-A A1Z-A MCT-A MCZ-A TAZ-A RTZ-A HIT-A HIZ-A
+	     RHW-A RHZ-A);
+
+############
+##  Main  ##
+############
+
+# call command line parsing funciton
+cmdline();
+
+# Initialize/load variables and default values
+do_init();
+fileNameInit();
+
+open(STDOUT, "| tee -ai $logFile");
+
+$SIG{INT} = \&handleClose;
+$SIG{TERM} = \&handleClose;
+
+$| = 1; #Turn off buffered output
+
+# Test if line trace started already
+$ltStarted = 0;
+@traces = qx($vmn);
+foreach $tr (@traces) {
+  chomp $tr;
+  $uc_tr = uc $tr;
+  $uc_tr =~ s/^\s+//gm;
+  if ($chnName eq $uc_tr) {
+    $ltStarted = 1;
+  }
+}
+
+# Open reading pipe
+if ($textFile) {
+  open(LT, "cat $textFile |");
+}
+elsif ($inFile) {
+  
+  if ($ltStarted) {
+
+    # Ask if they want to tail or list
+    print "A line trace has started, do you want to tail the running \n";
+    print "line trace?  Y to tail the file, N to read from the beginning. \n"; 
+    chomp ($input = <STDIN>);
+
+    if ($input eq 'Y' || $input eq 'y') {
+      open(LT, "$traceTool -t -f $dmpName |");
+    }
+    elsif ($input eq 'N' || $input eq 'n') {
+      open(LT, "$traceTool -f $dmpName |");
+    }
+  }
+  else { 
+    print "NO line trace was detected.  This will read the dmp file from \n";
+    print "the beginning and not in real time. Hit ENTER to continue.\n"; 
+    chomp ($input = <STDIN>);
+    open(LT, "$traceTool -f $dmpName |");
+  }
+}
+else {
+
+  if ($ltStarted) {
+
+    # Ask if they want to tail or list
+    print "A line trace has started, do you want to tail the running \n";
+    print "line trace?  Y to tail the file, N to read from the beginning. \n";
+    chomp ($input = <STDIN>);
+
+    if ($input eq 'Y' || $input eq 'y') {
+      open(LT, "$traceTool -t -f $dmpName |");
+    }
+    elsif ($input eq 'N' || $input eq 'n') {
+      open(LT, "$traceTool -f $dmpName |");
+    }
+  }
+  else {
+    # Setup line trace
+    startTrace();
+    open(LT, "$traceTool -t -f $dmpName |");
+  }
+}
+
+open(OFP, "> $outputFile");
+
+$tm = time();
+$endTime = ($diagnose * 60) + $tm;
+$msgDateTimeStamp = 1;
+
+$mustCont = 0;
+print "Working.... \n";
+# read in trace and report
+while (<LT>) {
+  chomp;
+
+  # Print traffic volume counts every minute.
+  # Skip the blank first pass.
+  if (($msgDateTimeStamp != 1) && !$diagnose) {
+
+    # Check for one minute.
+    if ($msgDateTimeStamp > ($printTrafTime + 120)) {
+      while ($printTrafTime < $msgDateTimeStamp) {
+        $printTrafTime += 60;
+      }
+    }
+    else {
+      if ($msgDateTimeStamp >= $printTrafTime) {
+        $printTrafTime += 60;
+        $minOfLog++;
+	if ($minResTot) {
+          printTrafMakeup();
+	}
+      }
+    }
+  }
+
+  if (/^$/) {
+
+    $tm = time();
+
+    if ($diagnose && ($tm > $endTime)) {
+      # End here.
+      handleDiagnose();
+    }
+
+    # if you hit EOL, and you have a D00000, count your content and
+    # purge and print if count is reached or continue.
+    if ($buf =~ /(\wdata)\s*/) {
+      $dirType = $1;
+      ($head, $rest) = split /\s*[R|X]data\s*/, $buf;
+      $currLen = length $rest;
+
+      # Because Rdata can come in between Xdata, we need
+      # to keep two sets of lengths left
+      if ($dirType eq "Xdata") {
+        $xdataTotalLen = int $currLen;
+        $xdataMsg .= $buf;
+        $left = $xdataTotalLen - $currLen;
+	$xdataTotalLen = $left;
+      }
+      else {
+        $rdataTotalLen = int $$currLen;
+        $rdataMsg .= $buf;
+        $left = $rdataTotalLen - $currLen;
+	$rdataTotalLen = $left;
+      }
+
+      if ($left < 10 || $ltType eq "imqldis") {
+
+	# Save off the message, it's complete
+        if ($dirType eq "Xdata") {
+          finishXdataMsg();
+        }
+	else {
+          finishRdataMsg();
+        }
+	$xdataMsg = $rdataMsg = $buf = "";
+        $mustCont = 0;
+      }
+      else {
+        # Keep gathering, not done yet.
+        $buf = "";
+        $mustCont = 1;
+      }
+    }
+    elsif ($mustCont) {
+
+      ($head, $dirType, $rest) = split /\s*([R|X]data)/, $buf;
+      $currLen = length $rest;
+      if ("Xdata" eq $dirType) {
+        $xdataMsg .= $rest;
+        $left = $xdataTotalLen - $currLen;
+	$xdataTotalLen = $left;
+      }
+      else {
+        $rdataMsg .= $rest;
+        $left = $rdataTotalLen - $currLen;
+	$rdataTotalLen = $left;
+      }
+
+      # say we're good if left is < 10
+      if ($left < 10) {
+        if ("Xdata" eq $dirType) {
+          finishXdataMsg();
+        }
+	else {
+          finishRdataMsg();
+        }
+	$xdataMsg = $rdataMsg = $buf = "";
+	$mustCont = 0;
+      }
+      else {
+        $buf = "";
+        $mustCont = 1;
+      }
+    }
+    elsif ($buf =~ /Event/ || $buf =~ /State/) {
+
+      if ($buf =~ (/ (\d\d\/\d\d \d\d:\d\d:\d\d)\.\d\d /)) {
+        $msgTimeStamp = $1;
+      }
+
+      # cover attempting to connect essages.
+      if ($buf =~ /connection (\d+)/) {
+	$conn = $1;
+	$msnMesgHash{$msn}[$CONNNUM] = $conn;
+	$connCntHash{$conn} += 0;
+	if ($buf =~ /Send failed/) {
+	  $connErrMsg = "Connection refused when tried.";
+	  $errTypeHash{"CONNERR"} += 1;
+	  $errTypeHash{"CONNERR"}[$EXAMP] = $connErrMsg;
+	  $errTypeHash{"CONNERR"}[$CONNNUM] = $conn;
+
+	  $acct_msg = sprintf("[ACCT: CONN:%d RQ:CONNRECT RP:ERROR TIME: %s]",
+	                      $conn, $msgTimeStamp);
+	  print OFP $acct_msg;
+	  printf OFP "[RQMSG: Request for a connection ]";
+	  printf OFP "[RPMSG: ERROR, No response from Customer]\n";
+          if (!$diagnose) {
+	    printSendFail();
+	  }
+	}
+	elsif ($buf =~ /essage buffered/) {
+	  $buffErrMsg = "Message Buffered, Not Sent";
+          if (!$diagnose) {
+	    printBuff();
+	  }
+	  $errTypeHash{"BUFFERED"} += 1;
+	  $errTypeHash{"BUFFERED"}[$EXAMP] = $buffErrMsg;
+	}
+	elsif ($buf =~ /Entity up/) {
+          if (!$diagnose) {
+            printEntUp();
+	  }
+	}
+	elsif ($buf =~ /Entity down/) {
+          if (!$diagnose) {
+            printEntDown();
+	  }
+	}
+      }
+      $buf = "";
+    }
+    elsif ($buf =~ /IDENTIFIER/) {
+      if ($buf =~ / (\d\d)\/(\d\d) (\d\d):(\d\d):(\d\d)\.(\d\d) /) {
+	$month = $1;
+	$day_of_month = $2;
+	$hours = $3;
+	$min = $4;
+	$sec = $5;
+	$monYr = qx(date +%m/%y);
+	chomp $monYr;
+	($curMon, $yr) = split /\//, $monYr;
+	if ($month > $curMon) {
+	  # Must be last year, because it's not in the future.
+	  $yr = $yr - 1;
+	}
+	$startTime = timegm($sec, $min, $hours, $day_of_month, $month - 1, $yr);
+        $msgDateTimeStamp = $startTime;
+        $printTrafTime = $startTime + 60; 
+      }
+    }
+    else {
+      $buf = "";
+    }
+  }
+  else {
+    # Remove \ from end of line.
+    s/\\$//;
+    $buf .= $_;
+  }
+}
+
+handleClose();
+
+exit;
+
+###################
+##  End of Main  ##
+###################
+
+
+#####################################################################
+## Process the command line options
+##
+#####################################################################
+sub cmdline() {
+
+  $help_cmd = 0;
+
+  GetOptions (
+    'd|diagnose:3' => \$diagnose,
+    'f|file=s' => \$inFile,
+    'h|help' => \$help_cmd,
+    'p|print=i' => \$printInter,
+    's|tsize=i' => \$ltfileSize,
+    't|text=s' => \$textFile
+  );
+
+  $zone = `uname -n | cut -d . -f 1`;
+  chomp($zone);
+
+  if ($help_cmd == 1) {
+    print STDERR "Help command entered. \n";
+    usageexit();
+  }
+
+  if ($ARGV[0]) {
+    if ($ARGV[0] =~ /-/) {
+
+      ($chn, $utt) = split /-/, $ARGV[0];
+      $chnName = sprintf "%s-%s", uc $chn, uc $utt;
+      $outputChnName = sprintf "%s_%s", lc $chn, lc $utt;
+      if ($inFile) {
+        $dmpName = $inFile;
+      }
+      else {
+        $dmpName = sprintf "%s-%s.dmp", lc $chn, lc $utt;
+      }
+    }
+    else {
+      print STDERR "Please include CHN, a dash and \"A\" or \"B\"\n";
+      usageexit();
+    }
+  }
+  else {
+    print STDERR "no chn-utt entered. \n";
+    usageexit();
+  }
+}
+
+#####################################################################
+## Usage printing function
+##
+#####################################################################
+sub usageexit() {
+
+  print STDERR "\nUsage: hrstrace [options] <chn>-<utt>\n";
+  print STDERR "  Starts a line trace and displays stats for the line \n";
+  print STDERR "  trace while running.  Control + C stops the program and \n";
+  print STDERR "  stops the line trace before exiting. \n";
+  print STDERR "  Options:\n";
+  print STDERR "  -d <int> = diagnose mode. open trace for <int> minutes,\n";
+  print STDERR "             watching for problems and report simple problems.\n";
+  print STDERR "  -f    = read from dmp file rather than start a new trace.\n";
+  print STDERR "          If a trace is not active, use -l also.  For an active\n";
+  print STDERR "          trace, leave off the -l. \n";
+  print STDERR "  -p <int> = message interval for updates, default to 250. \n";
+  print STDERR "  -s <bytes> = Size of line trace in bytes, default is \n";
+  print STDERR "               100000000 or 100Mb\n";
+  print STDERR "  -t    = read from text file rather than start a new trace.\n";
+  print STDERR "  <chn> = Chain to trace.\n";
+  print STDERR "  <utt> = Traffic type [A,B].\n";
+  exit 1;
+}
+
+#####################################################################
+## Initialize variables and load in default values.
+##
+#####################################################################
+sub do_init() {
+
+  if ($zone =~ /^uswsup/) {
+    $tnl = "/uswsup01/knetbin/tnldis";
+    $mld = "/uswsup01/knetbin/mldis";
+    $wld = "/uswsup01/knetbin/wizldis";
+    $imq = "/uswsup01/knetbin/imqldis";
+    $vmn = "/home/uswrpt/bin/viewmon";
+    $tstamp = "/uswsup01/usw/offln/bin/tstamp";
+  }
+  elsif ($zone =~ /^uswprodce/ || $zone =~ /^uswuatce/) {
+    $tnl = "/pegs/knet/knet2.2.6.32/runtime/bin/tnldis";
+    $mld = "/pegs/knet/knet2.2.6.32/runtime/bin/mldis";
+    $wld = "/pegs/knet/knet2.2.6.32/runtime/bin/wizldis";
+    $imq = "/pegs/knet/knet2.2.6.32/runtime/bin/imqldis";
+    $vmn = "/pegs/$zone/scripts/viewmon";
+    $tstamp = "/pegs/$zone/scripts/tstamp";
+  }
+  elsif ($zone =~ /^dhsc/) {
+    $verfile = qx(cat /$zone/knet/knetversion);
+    ($key, $knetVer) = split /=/, $verfile;
+    chomp $knetVer;
+    $tnl = "/$zone/knet/$knetVer/runtime/bin/tnldis";
+    $mld = "/$zone/knet/$knetVer/runtime/bin/mldis";
+    $wld = "/$zone/knet/$knetVer/runtime/bin/wizldis";
+    $imq = "/$zone/knet/$knetVer/runtime/bin/imqldis";
+
+    $vmn = "/$zone/scripts/viewmon";
+    $tstamp = "/$zone/scripts/tstamp";
+  }
+  else {
+    print STDERR "Meant to be ran on uswsup01 or a production CE.\n";
+    usageexit();
+  }
+
+  # Decide which trace tool to use. Use chnName
+  if ($chnName) {
+    $traceTool = "";
+    foreach $item (@mlchn) {
+      if ($item eq $chnName) {
+        $traceTool = $mld;
+	$ltType = "mldis";
+      }
+    }
+    foreach $item (@imqchn) {
+      if ($item eq $chnName) {
+        $traceTool = $imq;
+	$ltType = "imqldis";
+      }
+    }
+    foreach $item (@wzchn) {
+      if ($item eq $chnName) {
+        $traceTool = $wld;
+	$ltType = "wizldis";
+      }
+    }
+    # Default to tnl
+    if (!$traceTool) {
+      $traceTool = $tnl;
+      $ltType = "tnldis";
+    }
+  }
+  else {
+    usageexit();
+  }
+}
+
+sub fileNameInit {
+
+  $md_cmd = qx(date +%m/%d);
+  $md_cmd =~ /(\d\d)\/(\d\d)/;
+  $month = $1;
+  $day_of_month = $2;
+
+  $fileTime = sprintf "_%s_%s", $month, $day_of_month;
+
+  $outputFileOld = $outputChnName . "_output" . $fileTime . ".txt-";
+  $outputFile = $outputChnName . "_output" . $fileTime . ".txt";
+  $logFileOld = $outputChnName . "_summary" . $fileTime . ".txt-";
+  $logFile = $outputChnName . "_summary" . $fileTime . ".txt";
+
+  if (qx(ls $outputFile 2>/dev/null)) {
+    qx(mv $outputFile $outputFileOld);
+  }
+  if (qx(ls $logFile 2>/dev/null)) {
+    qx(mv $logFile $logFileOld);
+  }
+
+  # check to see if there is already a file named this,
+  # and save it to a minus if there is.
+
+}
+
+#####################################
+##  Subroutine:  startTrace        ##
+#####################################
+sub startTrace {
+
+  $TRCDIR = $ENV{TRCDIR};
+  if (!$TRCDIR) {
+    print "Environment variable TRCDIR is NOT set\n";
+    exit;
+  }
+
+  if ($uid ne "usw" && $uid ne "uat" && $uid ne "qa") {
+    print STDERR "You must be logged in as \"usw\", \"uat\" or \"qa\".\n";
+    usageexit;
+  }
+
+  # Size is set for 500mb
+  $size = "-b $ltfileSize";
+
+  $qid= uc $chn . "-mon-" . uc $utt;
+  $gateway= uc $chn . "-TCP" . uc $utt . "-P";
+  $filename= lc $chn . "-" . lc $utt . ".dmp";
+  $semaphore= lc $chn . "-" . lc $utt;
+  $run_flag="ON";
+
+  #####################################
+  # Get a list of the semaphore files.
+  #####################################
+  opendir DIR, "$TRCDIR" or  die "Can\'t open semaphore ($TRCDIR).\n";
+  @filelist=readdir DIR;
+  closedir DIR;
+
+  ############################################################
+  # Check each file with the created semaphore.  If it exists
+  # turn the run_flag to OFF
+  ############################################################
+  while ($run_flag ne "OFF" && $#filelist >= 0) {
+    $file = shift @filelist;
+    if ($file eq $semaphore) {
+      $run_flag = "OFF";
+    }
+  }
+
+  ############################################################
+  # If run_flag is not OFF, the lets check to see the gateway
+  # is running.
+  ############################################################
+  if ($run_flag ne "OFF") {
+
+    #####################################################
+    # Using the kps output, generate a list of gateways.
+    #####################################################
+    @raw_kps = `kps`;
+    @kpslist=();
+    $gate_active="OFF";
+    foreach $line (@raw_kps) {
+      ($kid, $junk) = split / /, $line;
+      if ($kid =~ /^[a-zA-Z0-9]{2,3}-TCP[abAB]-P$/) {
+	push @kpslist, $kid;
+      }
+    }
+
+    #########################################################
+    # Check each gateway with our generated gateway, and if
+    # it matches something in the list, then set gate_active
+    # to ON.
+    #########################################################
+    while ($gate_active ne "ON" && $#kpslist >=0) {
+      $kid = shift @kpslist;
+      if ($kid eq $gateway) {
+	$gate_active = "ON";
+      }
+    }
+
+    ###################################################
+    # If gate_active is ON then we have a valid trace,
+    # so start him up!
+    ###################################################
+    if ($gate_active eq "ON") {
+      ##start_trace;
+      open FIL, "> $TRCDIR/$semaphore" or die "Can\'t create semaphore.";
+	print FIL `date`;
+      close FIL;
+      system "kqcreate $qid >/dev/null 2>&1";
+      system "krun -i linemon -q $qid >/dev/null 2>&1";
+      system "kqwait $qid >/dev/null 2>&1";
+      $firstPart = "ncdctl $qid -t 1 -N $gateway,ALL -a -f $filename ";
+      system "$firstPart $size >/dev/null 2>&1";
+      $iStartedTraces = 1;
+    }
+    else {
+      print "Could not find $chnName on this box. \n";
+      usageexit();
+    }
+  }
+}
+
+#####################################
+##  Subroutine:  finishXdataMsg    ##
+#####################################
+sub finishXdataMsg {
+
+  # xdataMsg includes the front information material like
+  #   connection and R or X data needed below.
+  # shortMsg is just from HDR onward and will go in the log
+  if ($xdataMsg =~ / (\d\d\/\d\d \d\d:\d\d:\d\d)\.\d\d/ ) {
+    $msgTimeStamp = $1;
+  }
+  ($head, $rest) = split /\s*[R|X]data/, $xdataMsg;
+  $shortMsg = $rest;
+
+  # create key based on MSN
+  if ($xdataMsg =~ /MSN(\w*)\|/) {
+
+    if (14 == (length $1) && $1 !~ /XXXXXX/) {
+      $msn = $1;
+      $msnMesgHash{$msn}[$MSN] = $msn;
+
+      if (!($smesg % $printInter) && !$diagnose) {
+	printSummary();
+      }
+      $smesg++;
+
+      # Calc the date time from MSN
+      qx($tstamp -h $msn) =~ /(\d\d)\/(\d\d)\/(\d\d) (\d\d):(\d\d):(\d\d)/;
+      $mony = $1 - 1;
+      $dateSortKey = timegm($6, $5, $4, $2, $mony, $3);
+      $msgDateTimeStamp = $dateSortKey;
+      $msnMesgHash{$msn}[$MSN] = $msn;
+      $msnMesgHash{$msn}[$RQTIMEUTC] = $dateSortKey;
+      $minReqTot++;
+
+      if ($xdataMsg =~ /\|\|(\w*)\|/) {
+	$msnMesgHash{$msn}[$RQTYPE] = $1;
+	if ($1 =~ /BOOK/) {
+	  $bookRq++;
+	  $minBookRq++;
+	}
+	elsif ($1 =~ /PALS/) {
+	  $palsRq++;
+	  $minPalsRq++;
+	}
+	elsif ($1 =~ /AALS/) {
+	  $aalsRq++;
+	  $minAalsRq++;
+	}
+	elsif ($1 =~ /RPIN/) {
+	  $rpinRq++;
+	  $minRpinRq++;
+	}
+      }
+      $msnMesgHash{$msn}[$RQMESG] = $shortMsg;
+      $msnMesgHash{$msn}[$RQTIME] = $msgTimeStamp;
+      if ($xdataMsg =~ /connection (\d+)/) {
+	$msnMesgHash{$msn}[$CONNNUM] = $1;
+	$connCntHash{$1} += 1;
+      }
+      $msnMesgHash{$msn}[$SORTKEY] = $dateSortKey;
+    }
+  }
+}
+
+#####################################
+##  Subroutine:  finishRdataMsg    ##
+#####################################
+sub finishRdataMsg {
+
+  # rdataMsg includes the front information material like
+  #   connection and R or X data needed below.
+  # shortMsg is just from HDR onward and will go in the log
+  if ($rdataMsg =~ (/ (\d\d\/\d\d \d\d:\d\d:\d\d)\.\d\d /)) {
+    $msgTimeStamp = $1;
+  }
+  ($head, $rest) = split /\s*[R|X]data\s*/, $rdataMsg;
+  $shortMsg = $rest;
+
+  # create key based on MSN
+  if ($rdataMsg =~ /MSN(\w*)\|/) {
+    if (14 == (length $1) && $1 !~ /XXXXXX/) {
+      $msn = $1;
+      $msnMesgHash{$msn}[$MSN] = $msn;
+
+      # Calc the date time from MSN
+      qx($tstamp -h $msn) =~ /(\d\d)\/(\d\d)\/(\d\d) (\d\d):(\d\d):(\d\d)/;
+      $mony = $1 - 1;
+      $yr = $3;
+      $dateSortKey = timegm($6, $5, $4, $2, $mony, $3);
+      $msgDateTimeStamp = $dateSortKey;
+      $msnMesgHash{$msn}[$MSN] = $msn;
+
+      $rdataMsg =~ (/(\d\d)\/(\d\d) (\d\d):(\d\d):(\d\d)/);
+      $utc_rp = timegm($5, $4, $3, $2, $mony, $yr);
+      $msnMesgHash{$msn}[$RPTIMEUTC] = $utc_rp;
+
+      # Count only complete messages
+      $minResTot++;
+
+      if ($rdataMsg =~ /\|\|(\w*)\|/) {
+	$msnMesgHash{$msn}[$RPTYPE] = $1;
+	$curRQType = $msnMesgHash{$msn}[$RQTYPE];
+	if ($1 =~ /BOOK/) {
+	  $bookRp++;
+	  $minBookRp++;
+	}
+	elsif ($1 =~ /PALS/) {
+	  $palsRp++;
+	  $minPalsRp++;
+	}
+	elsif ($1 =~ /AALS/) {
+	  $aalsRp++;
+	  $minAalsRp++;
+	}
+	elsif ($1 =~ /RPIN/) {
+	  $rpinRp++;
+	  $minRpinRp++;
+	}
+      }
+      $msnMesgHash{$msn}[$RPMESG] = $shortMsg;
+      $msnMesgHash{$msn}[$RPTIME] = $msgTimeStamp;
+      if ($rdataMsg =~ /connection (\d+)/) {
+	$msnMesgHash{$msn}[$CONNNUM] = $1;
+      }
+      if ($rdataMsg =~ /\|DEE(\w*)\|/) {
+	$errMsg = $1;
+      }
+      if ($rdataMsg =~ /\|ERC(\w*)\|/) {
+	$errMsg .= $1;
+      }
+      if ($errMsg) {
+	$isErr++;
+	if ($curRQType =~ /PALS/) {
+	  $isPalsErr++;
+	  $minPalsRp++;
+	}
+	elsif ($curRQType =~ /AALS/) {
+	  $errMsg = "AALS_" . $errMsg;
+	  $isAalsErr++;
+	  $aalsRp--;
+	}
+	elsif ($curRQType =~ /RPIN/) {
+	  $isRpinErr++;
+	  $rpinRp--;
+	}
+	elsif ($curRQType =~ /BOOK/) {
+	  $isBookErr++;
+	  $bookRp--;
+	}
+	$errTypeHash{$errMsg} += 1;
+	$errTypeHash{$errMsg}[$EXAMP] = $msnMesgHash{$msn}[$RPMESG];
+      }
+
+      $errMsg = "";
+      if ($msnMesgHash{$msn}[$RPTIMEUTC] && $msnMesgHash{$msn}[$RQTIMEUTC]) {
+        $hrsTime = $msnMesgHash{$msn}[$RPTIMEUTC] - $msnMesgHash{$msn}[$RQTIMEUTC];
+      }
+      else {
+        $hrsTime = 0;
+      }
+      $hrsTime = 0 if ($hrsTime < 0);
+
+      $acct_msg1 = sprintf("[ACCT: MSN:%s CONN:%d ",
+      $msn, $msnMesgHash{$msn}[$CONNNUM]);
+      $acct_msg2 = sprintf("RQ:%s RQTIME:%s RP:%s RPTIME:%s HRSTIME:%s]",
+      $msnMesgHash{$msn}[$RQTYPE], $msnMesgHash{$msn}[$RQTIME],
+      $msnMesgHash{$msn}[$RPTYPE], $msnMesgHash{$msn}[$RPTIME], $hrsTime);
+      print OFP $acct_msg1;
+      print OFP $acct_msg2;
+      printf OFP "[RQMSG: %s]", $msnMesgHash{$msn}[$RQMESG];
+      printf OFP "[RPMSG: %s]\n", $msnMesgHash{$msn}[$RPMESG];
+    }
+  }
+
+}
+
+#####################################
+##  Subroutine:  printSummary        ##
+#####################################
+sub printSummary {
+
+  if ($startTime && $dateSortKey) {
+    $difference = $dateSortKey - $startTime;
+    if (0 > $difference) {
+      $runMin = $runSec = 0;
+    }
+    else {
+      $runSec = $difference % 60;
+      $difference = ($difference - $runSec) / 60;
+      $runMin    =  $difference % 60;
+    }
+  }
+  else {
+    $runMin = $runSec = 0;
+  }
+
+  print "\n";
+  print "Message info for $chnName $msgTimeStamp running for $runMin min and $runSec sec. \n";
+  printf "  Book RQ/RP/Err: %0d/%0d/%0d, \tPals RQ/RP/Err: %0d/%0d/%0d, \n",
+	  $bookRq, $bookRp, $isBookErr, $palsRq, $palsRp, $isPalsErr;
+  printf "  Aals RQ/RP/Err: %0d/%0d/%0d, \tRpin RQ/RP/Err: %0d/%0d/%0d, \n",
+	  $aalsRq, $aalsRp, $isAalsErr, $rpinRq, $rpinRp, $isRpinErr;
+  printf "  Total  RQ/RP/Err: %0d/%0d/%0d\n",
+	  $smesg, $smesg - $isErr, $isErr;
+  $connCnt = keys %connCntHash;
+  printf "  Connections: %d ", $connCnt;
+  for ($conn = 0; $conn < $connCnt; $conn++) {
+    printf ", %s: %0d", $conn, $connCntHash{$conn};
+  }
+  print "\n";
+  print "-" x 70;
+  print "\n";
+}
+
+#####################################
+##  Subroutine:  printBuff        ##
+#####################################
+sub printSendFail {
+
+  print "Message info:\n";
+  printf "  Trying to connnect on %s but send Fails.\n", $conn;
+  printf "  the number %s connection is down.\n", $conn;
+
+}
+
+#####################################
+##  Subroutine:  printBuff        ##
+#####################################
+sub printBuff {
+
+  print "Message info:\n";
+  printf "  Receiving Message buffered, not sent message \n";
+  printf "  Contact the customer, they need to cycle. \n";
+
+}
+
+#####################################
+##  Subroutine:  printEntUp        ##
+#####################################
+sub printEntUp {
+
+  printf "  Entity came up from customer end at $msgTimeStamp \n";
+
+}
+
+#####################################
+##  Subroutine:  printEntDown      ##
+#####################################
+sub printEntDown {
+
+  printf "  Entity went down from customer end at $msgTimeStamp \n";
+
+}
+
+#####################################
+##  Subroutine:  handleDiagnose    ##
+#####################################
+sub handleDiagnose {
+
+  $errOut = $warnOut = "";
+
+  # Sort the err type hash
+  foreach $err (keys %errTypeHash) {
+
+    if ($err eq "CONNERR") {
+      $conn = $errTypeHash{"CONNERR"}[$CONNNUM];
+      $errOut .= "  Conn $conn not connected.  We keep trying but ";
+      $errOut .= "customer needs to cycle\n";
+      $errOut .= "  Contact Customer to cycle their end. \n\n";
+    }
+    elsif ($err eq "BUFFERED") {
+      $errOut .= "  Receiving Message Buffered warning. \n";
+      $errOut .= "  Contact Customer to cycle their application. \n\n";
+    }
+  }
+
+  if (!$bookRp && $bookRq) {
+    $warnOut .= "  Found Book request but no responses. Request = $bookRq. \n";
+  }
+  if (!$palsRp && $palsRq) {
+    $warnOut .= "  Found Pals request but no responses. Request = $palsRq. \n";
+  }
+  if (!$aalsRp && $aalsRq) {
+    $warnOut .= "  Found Aals request but no responses. Request = $aalsRq. \n";
+  }
+  if (!$rpinRp && $rpinRq) {
+    $warnOut .= "  Found Rpin request but no responses. Request = $rpinRq. \n";
+  }
+
+  if ($errOut) {
+    print "Errors: \n";
+    print $errOut;
+  }
+  if ($warnOut) {
+    print "Warnings: \n";
+    print $warnOut;
+  }
+
+  if (!$errOut && !$warnOut) {
+    print "\n  Everything looks good. \n";
+  }
+  print "\n";
+
+  close OFP;
+  close LT;
+  close STDERR;
+
+  # Close line trace.
+  qx(stopmon $chnName);
+
+  exit;
+
+}
+
+#####################################
+##  Subroutine:  handleClose       ##
+#####################################
+sub handleClose {
+
+  if ($diagnose) {
+    handleDiagnose();
+  }
+
+  print "\nTotals are:\n";
+  printSummary();
+
+  # Sort the err type hash
+  foreach $err (keys %errTypeHash) {
+    $skey = 1000000000 + $errTypeHash{$err};
+    $errTypeHashSorted{$skey} = $err;
+    $errTypeHashSorted{$skey}[$EXAMP] = $errTypeHash{$err}[$EXAMP];
+  }
+
+  $ecount = keys %errTypeHashSorted;
+  if ($ecount) {
+    printf "\nError info: \n";
+    foreach $err (reverse sort keys %errTypeHashSorted) {
+      $numErr = $err - 1000000000;
+      $errType = $errTypeHashSorted{$err};
+      printf "  Err type: %s, frequency: %d \n", $errType, $numErr;
+      printf "    msg example: %s \n", $errTypeHashSorted{$err}[$EXAMP];
+    }
+  }
+
+  close OFP;
+  close LT;
+  close STDERR;
+
+  # IF we started the trace, then kill it before we quit.
+  if ($iStartedTraces) {
+    qx(stopmon $chnName);
+  }
+}
+
+sub printTrafMakeup {
+
+  # This is meant to display a taffice makeup or volume.
+  print "\n";
+  print "#" x 70;
+  print "\n";
+
+  print "## It's been $minOfLog minutes of trace time. Total ";
+  print "Volume per Minute:\n"; 
+  print "##   Total Request/Response = $minReqTot / $minResTot,\n";
+  print "##   PALS RQ/RP = $minPalsRq / $minPalsRp, \t\tAALS RQ/RP = $minAalsRq / ";
+  print "$minAalsRp, \n";
+  print "##   RPIN RQ/RP = $minRpinRq / $minRpinRp, \t\tBOOK RQ/RP = $minBookRq / ";
+  print "$minBookRp\n";
+
+  # Reset the minutely variables.
+  $minAalsRq = $minPalsRq = $minBookRq = $minRpinRq = 0;
+  $minAalsRp = $minPalsRp = $minBookRp = $minRpinRp = 0;
+  $minReqTot = $minResTot = 0;
+
+  print "#" x 70;
+  print "\n";
+}
+

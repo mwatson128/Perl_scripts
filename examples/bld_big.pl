@@ -1,0 +1,91 @@
+#!/bin/perl
+
+printf "MIKEW\n";
+
+for ($SEG = 1; $SEG < 21; $SEG++) {
+
+  printf "PALSRP|SEG%02d|CHNWV|PIDW15333|RPCRAC|\\\n", $SEG;
+  printf "RP1BEST AVAILABLE RATE|NCUUSD|TX1TOTAL TAXED AT 14.00PCT|CMRC||\\\n";
+  printf "RTRCRP|SEG%02d|RTCDLX|\\\n", $SEG;
+  printf "RD1DLX RM 300SQFT OCEAN VIEW KING MARBLE|\\\n";
+  printf "RD2BATHHARDWOOD FLOORS SOAKING TUB|\\\n";
+  printf "CXT24H|FLGXG|RMR265.00|RCMF|TRR265.00|TRI302.10|\\\n";
+  printf "AMCAIRCON|AMIR|AMFE|\\\n";
+  printf "AMCALRMCK|AMIR|AMFE|\\\n";
+  printf "AMCBATH|AMIR|AMFE|\\\n";
+  printf "AMCBCHVW|AMIR|AMFE|\\\n";
+  printf "AMCCRDTEL|AMIR|AMFE|\\\n";
+  printf "AMCFIRELT|AMIR|AMFE||\\\n";
+  printf "RTRCRP|SEG%02d|RTCSU1|\\\n", $SEG;
+  printf "RD1JR STE 360SQ FT KING BED SEP WORK AREA WITHDESK|\\\n";
+  printf "RD2FOR 4MARBLE BATH OCEAN VIEW 2 42IN TV|CXT24H|\\\n";
+  printf "FLGXG|RMR295.00|RCMF|TRR295.00|TRI336.30|\\\n";
+  printf "AMCADPTRS|AMIR|AMFE|\\\n";
+  printf "AMCAIRCON|AMIR|AMFE|\\\n";
+  printf "AMCALRMCK|AMIR|AMFE|\\\n";
+  printf "AMCBATH|AMIR|AMFE|\\\n";
+  printf "AMCBCHVW|AMIR|AMFE|\\\n";
+  printf "AMCCRDTEL|AMIR|AMFE||\\\n";
+  printf "RTRCRP|SEG%02d|RTCS1A|\\\n", $SEG;
+  printf "RD11 BR STE 600SQFT KING OCEAN VIEW HARDWOOD|\\\n";
+  printf "RD2FLRSKITCHEN EATING AREA MARBLE BATH SPA TUB|\\\n";
+  printf "CXT24H|FLGXG|RMR345.00|RCMF|TRR345.00|TRI393.30|\\\n";
+  printf "AMCADPTRS|AMIR|AMFE|\\\n";
+  printf "AMCAIRCON|AMIR|AMFE|\\\n";
+  printf "AMCALRMCK|AMIR|AMFE|\\\n";
+  printf "AMCBATH|AMIR|AMFE|\\\n";
+  printf "AMCBCHVW|AMIR|AMFE|\\\n";
+  printf "AMCCRDTEL|AMIR|AMFE||\\\n";
+  printf "RTRCRP|SEG%02d|RTCS1B|\\\n", $SEG;
+  printf "RD1ONE BEDROOM OCEAN VIEW SUITE WITH CUISINETTE|\\\n";
+  printf "RD2ONE BEDROOM SUITE OFFERS A SEPARATE LIVING |\\\n";
+  printf "CXT24H|FLGXG|RMR395.00|RCMF|TRR395.00|TRI450.30|\\\n";
+  printf "AMCAIRCON|AMIR|AMFE|\\\n";
+  printf "AMCALRMCK|AMIR|AMFE|\\\n";
+  printf "AMCBATH|AMIR|AMFE|\\\n";
+  printf "AMCBCHVW|AMIR|AMFE|\\\n";
+  printf "AMCCRDTEL|AMIR|AMFE|\\\n";
+  printf "AMCCRIB|AMIR|AMFE||\\\n";
+  printf "RTRCRP|SEG%02d|RTCSTE|\\\n", $SEG;
+  printf "RD1700SQFT OCEAN VIEW STE KING BED MARBLE BTHHRDWD|\\\n";
+  printf "RD2FLRS WALK OUT VERANDA KITCHDINING|\\\n";
+  printf "CXT24H|FLGXG|RMR760.00|RCMF|TRR760.00|TRI866.40|\\\n";
+  printf "AMCAIRCON|AMIR|AMFE|\\\n";
+  printf "AMCALRMCK|AMIR|AMFE|\\\n";
+  printf "AMCBALCON|AMIR|AMFE|\\\n";
+  printf "AMCBATH|AMIR|AMFE|\\\n";
+  printf "AMCBCHVW|AMIR|AMFE|\\\n";
+  printf "AMCCRDTEL|AMIR|AMFE||\\\n";
+  printf "RTRCRP|SEG%02d|RTCS2A|\\\n", $SEG;
+  printf "RD12 BR LUX STE 1100SQFT OCEAN VIEW 2 MARBLE|\\\n";
+  printf "RD2BTHSHRDWD FLRS FIREPLC KITC DINING FOR 6 SPA|\\\n";
+  printf "CXT24H|FLGXG|RMR795.00|RCMF|TRR795.00|TRI906.30|\\\n";
+  printf "AMC2BRSTE|AMIR|AMFE|\\\n";
+  printf "AMCAIRCON|AMIR|AMFE|\\\n";
+  printf "AMCALRMCK|AMIR|AMFE|\\\n";
+  printf "AMCBATH|AMIR|AMFE|\\\n";
+  printf "AMCCRDTEL|AMIR|AMFE|\\\n";
+  printf "AMCCRIB|AMIR|AMFE||\\\n";
+  printf "RTRCRP|SEG%02d|RTCSU2|\\\n", $SEG;
+  printf "RD12 BR LUX STE 1100SQFT OCEAN VIEW 2 MARBLE|\\\n";
+  printf "RD2BTHSHRDWD FLRSFIREPLC KITC DINING FOR 6 SPA|\\\n";
+  printf "CXT24H|FLGXG|RMR795.00|RCMF|TRR795.00|TRI906.30|\\\n";
+  printf "AMC2BRSTE|AMIR|AMFE|\\\n";
+  printf "AMCADPTRS|AMIR|AMFE|\\\n";
+  printf "AMCAIRCON|AMIR|AMFE|\\\n";
+  printf "AMCALRMCK|AMIR|AMFE|\\\n";
+  printf "AMCBATH|AMIR|AMFE|\\\n";
+  printf "AMCBCHVW|AMIR|AMFE||\\\n";
+  printf "RTRCRP|SEG%02d|RTCS2B|\\\n", $SEG;
+  printf "RD12 BR VERANDA STE SEPERATE LIVING WORKING|\\\n";
+  printf "RD22SLEEPING AREAS PRVT WALK OUT VERANDA KITCHEN|\\\n";
+  printf "CXT24H|FLGXG|RMR1150.00|RCMF|TRR1150.00|TRI1311.00|\\\n";
+  printf "AMC2BRSTE|AMIR|AMFE|\\\n";
+  printf "AMCADJNG|AMIR|AMFE|\\\n";
+  printf "AMCALRMCK|AMIR|AMFE|\\\n";
+  printf "AMCBALCON|AMIR|AMFE|\\\n";
+  printf "AMCBATH|AMIR|AMFE|\\\n";
+  printf "AMCBCHVW|AMIR|AMFE||\\\n";
+
+
+}

@@ -1,0 +1,177 @@
+#!/bin/perl
+#*TITLE - stdperl - Standard Perl utilities needed to run offline processes - 1.3
+#*SUBTTL Preface, and environment 
+#
+#  (]$[) stdperl:1.3 | CDATE=21:39:10 04 Aug 1998
+#
+#
+#	Copyright (C) 1998 THISCO, Inc.
+#	      All Rights Reserved
+#
+#
+
+$| = 1;
+
+#*SUBTTL (main) - parse (upon 'require') the e-mail distribution lists
+#
+# main()
+#
+# as this file is 'required' by another, this function is executed.
+# sets the e-mail distribution lists into the hash %DL_
+#
+# parameters:
+{
+  distribution;
+}
+
+
+#*SUBTTL setenv - set environment variables
+#
+# setenv()
+#
+# set the environment variable if none already exists with that name
+# if it is imperative that it gets set, it can be forced
+#
+# parameters:
+#   envname	- the name of the environment variable
+#   envvar	- the value to be assigned to the environment variable
+#   force	- flag set to force the assignment of the value if preexisting
+#
+# globals:
+#
+# locals (inherited):
+#
+# locals (defined):
+# 
+# mys:
+#
+# returns:
+#   void
+#
+sub setenv
+{
+  my($envname, $envvar, $force) = @_;
+
+  if (exists($ENV{$envname}) && $force ) {
+    $ENV{$envname} = $envvar;
+  }
+  elsif (exists($ENV{$envname})) {
+    printf(STDERR "WARNING: already environment '$envname'\n");
+  }
+  else {
+    $ENV{$envname} = $envvar;
+  }
+}
+
+
+#*SUBTTL distribution - 
+#
+# distribution()
+#
+# description
+#
+# parameters:
+#   none
+#
+# globals:
+#   DL_ 	- hash for holding distribution lists
+#
+# locals (inherited):
+#
+# locals (defined):
+# 
+# mys:
+#   opbrac	- flag set when open-brace ({)is encountered, and unset when
+#       	  close-brace (}) is encountered
+#   nl  	- temporarily holds the new/next line for multi-line entries
+#   pkey	- the hash key
+#   pval  	- the hash value
+#   file	- explicit path and name of the master distribution file
+#
+# returns:
+#   void
+#
+#
+#
+sub distribution
+{
+  my($opbrac, $nl, $pval, $pkey);
+  my($file) = "/usw/offln/bin/lib/distribution.env";
+
+  open(DL, $file) || die("cannot open $file for mailing lists");
+  while ($_ = <DL>) {
+  
+    ## ignore all comment lines 
+    if ($_ =~ /^[\s]*\#/) {
+      ;
+    }
+  
+    ## only process lines within the subroutines
+    elsif (!$opbrac && $_ =~ /^[\s]*{/) {
+      $opbrac = 1;
+    }
+    elsif ($opbrac && $_ =~ /^[\s]*}/) {
+      $opbrac = 0;
+    }
+  
+    # process the distribution-list entries
+    elsif ($opbrac && $_ =~ /DL_.*\b=/) {
+      my($pkey, $pval) = split('=', $_);
+  
+      # comprehend that backslash continues a line
+      while ($pval =~ /\\\s*$/) {
+        ($nl = <DL>) ||   print STDERR "could not get all of mailing list\n";
+        $nl =~ s/^\s*\b//;
+        substr($pval, -2) =  " $nl";
+      }
+  
+      # remove superfluous characters
+      $pkey =~ s/\s//g;
+      $pval =~ s/"\s*//g;
+      $pval =~ s/[\"\']//g;
+
+      # assign to global variable %DL_
+      $DL_{$pkey} = $pval;
+      $DBUG && print "$pkey -- $DL_{$pkey}\n";
+    }
+  }
+}
+
+#*SUBTTL - usystem - log and execute system call
+#
+# usystem()
+#
+# log and execute system call
+#
+# parameters:
+#   command	- string holding the system command
+#
+# globals:
+#   RUNFILE	- file which records all executed shell commands
+#
+# locals (inherited):
+#
+# locals (defined):
+# 
+# mys:
+#   rv	- return value from the system command
+#
+# returns:
+#   rv
+#
+sub usystem
+{
+my($command, @junk) = @_;
+
+  my($rv);
+
+  # keep a list of all the shell/system commands run
+  print(RUNFILE "${command}\n");
+  $rv = system("${command}");
+
+  ###$rv = system("${command} >> ${logfile} 2>> ${logfile}");
+
+  return($rv);
+}
+
+1;

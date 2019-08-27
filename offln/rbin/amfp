@@ -1,0 +1,139 @@
+#!/bin/perl 
+###########################################################################
+#
+# This will eventually be an AMF parser for breaking an AMF message down
+# into it segments and fields.
+#
+###########################################################################
+
+use Getopt::Std;
+
+# Usage statement.
+$us = "Usage: amf_parse.pl [-o format] amf_message_file 
+   -o format = reports output ('ascii' produces ASCII output, 
+      'latex' yeilds LaTeX output, 'html' yeilds HTML, etc.)  
+      [default is ASCII]\n";
+
+$errors = getopts('ho:');
+
+# help option. Print usage and exit.
+if ($opt_h) {
+  print $us;
+  exit;
+}
+
+# Define the output format.
+if ( !$opt_o ) {
+  $outformat = "ascii";
+}
+elsif ( $opt_o eq "html" ) {
+  $outformat = "html";
+}
+elsif ( $opt_o eq "csv" ) {
+  $outformat = "csv";
+}
+
+if (defined $ARGV[0]) {
+  if (-f $ARGV[0]) {
+    $INFILE = "< $ARGV[0]";
+  }
+  else {
+    print "$ARGV[0], not a regular file.\n";
+    print $us;
+    exit;
+  }
+}
+else {
+  print $us;
+  exit;
+}
+
+open INFILE or die "Can't open file $INFILE";
+
+$line_ind = 0;
+$msg_array = "";
+
+while (<INFILE>) {
+  
+  next if /^#|^$/;
+  next if /plcf/ || /gwif/ || /ret/;
+  chomp;
+  s/\\$//;
+  $msg_array .= $_;
+}
+close INFILE;
+
+#print $msg_array, "\n\n";
+
+@segments = split /\|\|+/, $msg_array;
+
+$num_segs = @segments;
+
+foreach $segment (@segments) {
+
+  next if $segment eq "^\00";
+  next if $segment eq "^00";
+  #print "SEGMENT: $segment\n";
+
+  if (1 != (@hdr = split /(RTENV)/, $segment)) {
+    shift @hdr;
+    $segment = $hdr[0] . $hdr[1];
+    print "\n";
+  }
+
+  if (1 != (@hdr = split /(HDR)/, $segment)) {
+    shift @hdr;
+    $segment = $hdr[0] . $hdr[1];
+    print "\n" 
+  }
+
+  @fields = split /\|/, $segment;
+  $num_fields = @fields;
+  if (2 <= $num_fields) {
+    print "  $fields[0]\n";
+    shift @fields;
+    foreach $field (@fields) {
+      @b_field = split //, $field;
+      $nm = $b_field[0] . $b_field[1] . $b_field[2];
+      shift @b_field;
+      shift @b_field;
+      shift @b_field;
+      $b_num = @b_field;
+      $cnt = 0;
+      $rest = "";
+      $frst = 1;
+      $lst = 0;
+      print "    $nm = ";
+      for($i = 0; $i < $b_num; $i++) {
+        if ('\\' eq $b_field[$i] && 'r' eq $b_field[$i + 1] &&
+	    ('\\' eq $b_field[$i + 2] && 'n' eq $b_field[$i + 3])) {
+	  if ($frst) {
+            printf("%3d %s\n", $cnt, $rest);
+	    $frst = 0;
+	    $lst = 1;
+	  }
+	  else {
+            printf("          %3d %s\n", $cnt, $rest);
+	  }
+          $cnt = 0;	
+          $rest = "";
+	  $i += 3;
+	}
+	else {
+          $rest .= $b_field[$i]; 
+	  $cnt++;
+	}
+      }
+      if ($lst) {
+        printf("          %3d %s\n", $cnt, $rest);
+      }
+      else {
+        printf("%3d %s\n", $cnt, $rest);
+      }
+
+      #print "        $field\n";
+    }
+  }
+}
+  
+  

@@ -1,0 +1,12 @@
+#!/bin/ksh
+
+if [ -z "$1" ]
+then
+	DB=$USWDB
+else
+	DB=$1
+fi
+
+cd /uswsup01/usw/db/${DB}/forms
+/informix-uswsup01_1/bin/isql -s $DB
+cd $PWD

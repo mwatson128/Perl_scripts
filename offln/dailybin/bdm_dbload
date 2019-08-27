@@ -1,0 +1,97 @@
+#!/bin/ksh
+# Load Property/PropertyX/Prop_Conv_Tbl into CFDB 
+** (]$[) bdm_dbload:1.1 | CDATE=08/14/06 10:55:51
+
+# Informix Stuff
+ONCONFIG=onconfig.ped_test
+INFORMIXDIR=/informix
+INFORMIXSERVER=ped_test_shm
+DBACCESS=$INFORMIXDIR/bin/dbaccess
+export ONCONFIG INFORMIXDIR INFORMIXSERVER
+
+# local
+DB=usw2onln
+LODPROPSQL=lod_prop.sql
+DELPROPSQL=del_prop.sql
+LODPROPXSQL=lod_propx.sql
+DELPROPXSQL=del_propx.sql
+LODPROPCONVSQL=lod_prop_conv.sql
+DELPROPCONVSQL=del_prop_conv.sql
+UPSTATSQL=update_stats.sql
+PROPFILE=property.unl
+PROPXFILE=propertyx.unl
+PROPCONVFILE=prop_conv.unl
+
+WORKDIR="/unload/bdm/"
+DATESTAMP=`date +'%m%d%y'`
+LOG="bdm_cfdb_log.$DATESTAMP"
+
+# email subject tag for this script
+MAILTAG="CFDB load for BDM ($DATESTAMP)"
+
+# email addresses
+EMAILS="Ted.Lankford@pegs.com Mike.Watson@Pegs.com"
+
+# start log
+cd $WORKDIR
+echo "---------- $MAILTAG ----------" > $LOG
+echo "- Date: `date +'%D %T'`" >> $LOG
+
+echo "- Working directory: $WORKDIR" >> $LOG
+
+# uncompress file
+uncompress -f $PROPFILE >> $LOG 2>&1
+echo "- $PROPFILE uncompressed" >> $LOG
+
+# del property
+echo "- Using dbaccess to delete all records in $DB:Property table" >> $LOG
+$DBACCESS $DB $DELPROPSQL >> $LOG 2>&1
+
+# load property
+echo "- Using dbaccess to load $DB:Property table" >> $LOG
+$DBACCESS $DB $LODPROPSQL >> $LOG 2>&1
+
+# re-compress file
+compress -f $PROPFILE >> $LOG 2>&1
+echo "- $PROPFILE compressed" >> $LOG
+
+# uncompress file
+uncompress -f $PROPXFILE >> $LOG 2>&1
+echo "- $PROPXFILE uncompressed" >> $LOG
+
+# del property
+echo "- Using dbaccess to delete all records in $DB:PropertyX table" >> $LOG
+$DBACCESS $DB $DELPROPXSQL >> $LOG 2>&1
+
+# load property
+echo "- Using dbaccess to load $DB:PropertyX table" >> $LOG
+$DBACCESS $DB $LODPROPXSQL >> $LOG 2>&1
+
+# re-compress file
+compress -f $PROPXFILE >> $LOG 2>&1
+echo "- $PROPXFILE compressed" >> $LOG
+
+# uncompress file
+uncompress -f $PROPCONVFILE >> $LOG 2>&1
+echo "- $PROPCONVFILE uncompressed" >> $LOG
+
+# del property
+echo "- Using dbaccess to delete all records in $DB:Prop Conv table" >> $LOG
+$DBACCESS $DB $DELPROPCONVSQL >> $LOG 2>&1
+
+# load property
+echo "- Using dbaccess to load $DB:property table" >> $LOG
+$DBACCESS $DB $LODPROPCONVSQL >> $LOG 2>&1
+
+# re-compress file
+compress -f $PROPCONVFILE >> $LOG 2>&1
+echo "- $PROPCONVFILE compressed" >> $LOG
+
+# update stats
+echo "- Using dbaccess to update stats on $DB" >> $LOG
+$DBACCESS $DB $UPSTATSQL >> $LOG 2>&1
+
+# mail log to list
+echo "- Date: `date +'%D %T'`" >> $LOG
+echo "---------- End of CFDB load ----------" >> $LOG
+mailx -s "$MAILTAG" $EMAILS < $LOG

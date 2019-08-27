@@ -1,0 +1,2 @@
+echo "sccsdiff"
+sccsdiff -r$1 -r$2 sccs/s.$3 | $PAGER

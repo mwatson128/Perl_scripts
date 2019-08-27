@@ -1,0 +1,9 @@
+# Copy specified file from usp1 to same place on tpe1
+echo "rcp usp1:`pwd`/${1} ${1}"
+rcp usp1:`pwd`/${1} ${1}
+
+#rcp *.c tpe1:`pwd`
+#echo "rcp *.c tpe1:`pwd`"
+#rcp *.rd tpe1:`pwd`
+#echo "rcp *.rd tpe1:`pwd`"
+#diff ${1} ${1}

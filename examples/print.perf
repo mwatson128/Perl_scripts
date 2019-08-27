@@ -1,0 +1,3 @@
+lpr -Phpmkt /usw/reports/monthly/perf/*.perf
+lpr -Phpmkt /usw/reports/monthly/perfb/*.perfb
+

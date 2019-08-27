@@ -1,0 +1,2 @@
+# Total rerun
+perl dt_tally_test.pl -d 03/01/04 2> vlad.err > vlad_std.out

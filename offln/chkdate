@@ -1,0 +1,27 @@
+#!/bin/perl
+
+use Time::Local;
+
+$nowtime = time;
+$oldtime = $nowtime - 7776000;
+($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = gmtime($nowtime);
+printf("now: %02d/%02d/%02d is %dsec\n", $mon+1, $mday, $year % 100, $nowtime);
+
+while ($line = shift @ARGV) {
+  $arg_mon = substr($line, 0, 2) - 1;
+  $arg_mday = substr($line, 3, 2);
+  if ($arg_mon <= $mon) {
+    $arg_year = $year;
+  }
+  else {
+    $arg_year = $year - 1;
+  }
+  $arg_time = timegm($sec, $min, $hours, $arg_mday, $arg_mon, $arg_year);
+  printf("%02d/%02d/%02d is %dsec ", $arg_mon+1, $arg_mday, $arg_year % 100, $arg_time);
+  if ($arg_time < $oldtime) {
+    print "and is older than 90 days\n";
+  }
+  else {
+    print "and is not older than 90 days\n";
+  }
+}

@@ -1,0 +1,141 @@
+#!/bin/perl
+
+sub countnights {
+  local $indate, $outdate, $inday, $inmonth, $outday, $outmonth;
+  local $inyear, $outyear, $jin, $jout, $nights, %offsets;
+
+  # WARNING:  Doesn't handle leap years correctly.
+
+  $indate = shift;
+  $outdate = shift;
+
+  # separate days and months
+  if ($indate =~ /(\d+)\/(\d+)\/(\d+)/) {
+    $inmonth = $1;
+    $inday = $2;
+    $inyear = $3;
+  }
+  else {
+    return 0;
+  }
+
+  if ($outdate =~ /(\d+)\/(\d+)\/(\d+)/) {
+    $outmonth = $1;
+    $outday = $2;
+    $outyear = $3;
+  }
+  else {
+    return 0;
+  }
+
+  unless ($inday && $outday && $inmonth && $outmonth) {
+    return 0;
+  }
+
+  if ($inmonth > 12 || $outmonth > 12) {
+    return 0;
+  }
+
+  # array of offsets
+  @offsets = (0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334);
+
+  # figure out corresponding julian dates for each
+  $jin = $offsets[$inmonth - 1] + $inday;
+  $jout = $offsets[$outmonth - 1] + $outday;
+
+  # number of nights
+  $nights = $jout - $jin;
+  if ($nights < 0) {
+    $nights += 365;
+  }
+  return $nights;
+}
+
+while (<>) {
+  chomp;
+
+  @fields = split /\|/;
+
+  # clean up the fields
+  for (@fields) {
+    # trim trailing white space
+    s/^(.*?)\s*$/$1/o;
+  }
+
+  # print it
+  # Brand Code
+  print "|" . shift @fields;
+  # Property ID
+  print "|" . shift @fields;
+  # ARC/IATA
+  print "|" . shift @fields;
+  # Account Number
+  print "|";
+  # Branch Number
+  print "|";
+  # Invoice Number
+  print "|";
+  # Agent
+  print "|";
+  # Market
+  print "|";
+  # Travel Agency Record ID
+  print "|";
+  # Database
+  print "|";
+  # Confirmation Number
+  print "|" . shift @fields;
+  # Booking Source
+  print "|" . shift @fields;
+  # PNR Number
+  print "|" . shift @fields;
+  # Guest Last Name
+  print "|" . shift @fields;
+  # Guest First Name
+  print "|" . shift @fields;
+  # Arrival Date
+  $arr_date = shift @fields;
+  print "|$arr_date";
+  # Departure Date
+  $dep_date = shift @fields;
+  print "|$dep_date";
+  # Cancel/Transaction Date
+  print "|" . shift @fields;
+  # Number of Nights
+  $nnt = countnights($arr_date, $dep_date);
+  unless ($nnt) {
+    $nnt = "";
+  }
+  print "|$nnt";
+  # Number of Rooms
+  print "|" . shift @fields;
+  # Room Rate
+  print "|" . shift @fields;
+  # Percentage
+  print "|";
+  # Commissionable Revenue
+  print "|";
+  # Transaction Currency
+  print "|" . shift @fields;
+  # Prop Name
+  print "|" . shift @fields;
+  # Address 1
+  print "|" . shift @fields;
+  # Address 2
+  print "|" . shift @fields;
+  # City
+  print "|" . shift @fields;
+  # State
+  print "|" . shift @fields;
+  # Postal
+  print "|" . shift @fields;
+  # Country
+  print "|" . shift @fields;
+  # Phone
+  print "|" . shift @fields;
+  # Fax
+  print "|" . shift @fields;
+
+  # print end of line
+  print "|\n";
+}

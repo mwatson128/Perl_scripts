@@ -1,0 +1,86 @@
+#!/bin/perl
+# (]$[) %M%:%I% | CDATE=%G% %U%
+# any - checks to see if a source directory exists,
+#      and if any files are checked out 
+#
+
+# Include ability to coloe output
+use Term::ANSIColor qw(:constants);
+
+############################################################################
+# GLOBALS
+############################################################################
+
+# Use the ENV{VCSSCCS} to get sandbox path
+$vcs_pre = $ENV{VCSSCCS};
+$cur_dir = $ENV{PWD}; 
+$depth_dir = ($cur_dir =~ tr/\//\//); # count the / to get depth
+
+# Get code_dir by removing first 'part' of dir list, uswdev.
+@temp_a = split /\//, $cur_dir;
+shift @temp_a;                   # get rid of the first /
+shift @temp_a;                   # get rid of the uswdev
+shift @temp_a;                   # dump sandbox because it's in twice
+
+# Get vcs_dir by merging vcs_pre and cur_dir minus first two elements
+$vcs_dir = $vcs_pre . "/" . join('/', @temp_a);
+
+
+############################################################################
+# MAIN
+############################################################################
+
+if (-d $vcs_dir ) {
+
+  # Use find to collect the p.* files below us.
+  @chk_files = qx(find $vcs_dir -name p.*);
+
+  $num_chk_files = @chk_files;
+  
+  if ($num_chk_files) {
+
+    # print number of files
+    print "Files checked out: ";
+    print RED, "$num_chk_files\n\n", RESET;
+
+    # print each file found
+    foreach $file (@chk_files) {
+      chomp $file;
+
+      $list = qx(ls -l $file);                    # get detailed info from ls -l
+      @info = split / +/, $list;                  # Split on space
+      $formated_day = sprintf("%02d", $info[6]);  # make all days 2 digits
+      $dt = join(' ', $info[5], $formated_day, $info[7]);
+
+      # break out just the file that is checked out.
+      @file_parts = split /p\./, $file;
+
+      # remove all pieces up to cur_dir but show below dirs.
+      @steps = split /\//, $file_parts[0];
+      shift @steps;
+      for($i = 0; $i <= $depth_dir; $i++) {
+	shift @steps;
+      }
+
+      # The file plus directory structure beyond cur_dir yields chk_fle
+      $chk_fle = join('/', @steps) . "/" . $file_parts[1];
+
+      printf "  %-40s  ", $chk_fle;
+      print RED, "by ", RESET; 
+      printf "%-10s", $info[2]; 
+      print RED, "since ", RESET;
+      printf "%-10s\n", $dt;
+    }
+    print "\n";
+  }
+  else {
+    # print number of files
+    print "Files checked out: ";
+    print RED, "0\n", RESET;
+  }
+}
+else {
+  print "The $vcs_dir directory does not exist.\n";
+}
+
+exit 0

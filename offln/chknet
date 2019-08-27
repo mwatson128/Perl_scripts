@@ -1,0 +1,126 @@
+#!/usr/bin/perl
+#
+# Gather network stats: Packets/second and percent collision rate.
+# Store in human-readable log file.  Send most error msgs directly
+# to script maintainer(s) through email.
+#
+# Designed to run hourly, printing a cycle start line and then 119
+# status lines.  Log file named according to date.
+#
+# THIS SCRIPT REQUIRES PERL.
+#
+# (]$[) %M%:%I% | CDATE=%G% %U%
+#
+
+# declare and/or initialize subroutines and variables.
+sub barf;
+my ($logdir, $i, $date, $filename, @input, $line, @word);
+my $mailaddr = 'charlest@pegsinc.com tedl@pegsinc.com';
+my $logprefix = "netstat.";
+my $oldpkts = 0;
+my $oldcoll = 0;
+my $sleeptime = 30;
+my $not_first_time = "";
+
+# get system name, do system-dependent things.
+my $sysname = `uname -n`;
+chomp $sysname;
+my $username = `/usr/ucb/whoami`;
+chomp $username;
+if ($sysname =~ /usw./) {
+  $mailcmd = "/usr/ucb/mail";
+  if ($username =~ /^qa$/) {
+    $logpath = "/qa/perf/kv";
+  }
+  elsif ($username =~ /^charlest/) {
+    $logpath = "/home/charlest/chknet_data";
+  }
+  else {
+    $logpath = "/prod/perf/kv";
+  }
+}
+elsif ($sysname =~ /tpe./) {
+  $mailcmd = "/usr/ucb/mail";
+  $logpath = "/prod/m2/usw/perf/system/kv";
+}
+else {
+  $mailcmd = "/usr/bin/mailx";
+  $logpath = "/usr2/usw/perf/kv";
+}
+
+# loop 120 times.  this is an hour if sleep time is 30 seconds.
+for ($i = 120; 0 < $i; $i--) {
+
+# time/date -- format for printing.
+  ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = gmtime();
+  $date = sprintf("%02d/%02d/%04d %02d:%02d:%02d", $mon + 1, $mday,
+                     $year + 1900, $hour, $min, $sec);
+  $year = $year % 100;
+
+# go to correct dir, determine file name.  done each time through loop,
+# so it'll adapt if day/month/year changes while running.
+  chdir $logpath or barf "Can't cd to $logpath: $!";
+  $logdir = sprintf("%02d%02d", $mon + 1, $year);
+  if (! -d $logdir) {
+    `mkdir $logdir 2>&1`;
+    `chmod 775 $logdir 2>&1`;
+  }
+  chdir $logdir or barf "Can't access $logdir: $!";
+  $filename = sprintf("%s%02d%02d%02d", $logprefix, $mon + 1, $mday, $year);
+
+# get netstat info.
+  @input = `netstat -i 2>&1`;
+  foreach $line (@input) {
+    @word = split(' ', $line);
+
+# only look at lines with system name.
+    if ($sysname eq $word[3]) {
+      $newpkts = $word[4] + $word[6];
+      $newcoll = $word[8];
+
+# calculate numbers.
+      if ($newpkts == $oldpkts) {
+        $collper = 0;
+      }
+      else {
+        $collper = (($newcoll - $oldcoll) / ($newpkts - $oldpkts)) * 100;
+      }
+      $rate = ($newpkts - $oldpkts) / $sleeptime;
+
+# because each iteration depends on the one before, the first is almost
+# always wrong.  print cycle start header instead.
+      if ($not_first_time) {
+        open(NSTLOG, ">> $filename") or barf "Can't open $filename: $!";
+        printf(NSTLOG
+               "%s | %.2f%% coll | %.2f pkt/sec\n",
+               $date, $collper, $rate);
+        close(NSTLOG);
+      }
+      else {
+        open(NSTLOG, ">> $filename") or barf "Can't open $filename: $!";
+        print NSTLOG "$date + ---- new log cycle ----\n";
+        close(NSTLOG);
+        $not_first_time = "true";
+      }
+
+# prepare for next iteration.
+      $oldpkts = $newpkts;
+      $oldcoll = $newcoll; 
+    }  # end of line with system
+  }  # end of foreach line
+
+# doze until next iteration.
+  sleep($sleeptime);
+}
+
+# subroutine to send fatal error msgs through email
+sub barf {
+  my ($barfmsg, @stuff) = @_;
+  open MAILPIPE, "| $mailcmd -s 'chknet error message' $mailaddr"
+    or die "Error opening mail pipe: $!";
+  print MAILPIPE "$date\n";
+  print MAILPIPE $barfmsg;
+  close MAILPIPE or die "Error closing mail pipe: $!";
+  exit 1;
+}
+

@@ -1,0 +1,2 @@
+find . -type f -print | xargs grep $1 | more
+

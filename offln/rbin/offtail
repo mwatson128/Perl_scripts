@@ -1,0 +1,4 @@
+#!/bin/sh
+cd /usw/offln/daily
+
+tail -f offln.log

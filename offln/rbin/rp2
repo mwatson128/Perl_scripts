@@ -1,0 +1,13 @@
+#! /bin/sh
+
+if [ -z "$1" ]
+then
+	TODAY=`env TZ=GMT0 date '+%m%d%H'`
+	DIR="/loghist/p2r/"
+else
+	TODAY=$1
+	DIR="."
+fi
+
+echo $TODAY
+ulgscan -f ${HOME}/bin/rp2_ALIAS ${DIR}/p2r${TODAY}.lg

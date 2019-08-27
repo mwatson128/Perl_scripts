@@ -1,0 +1,17 @@
+alias . read
+alias p rdprev
+alias d deluswrec
+alias sd display dmpdat
+alias wb adduswrec LGRPT|ARSWB||
+alias 1p adduswrec LGRPT|ARS1P||
+alias aa adduswrec LGRPT|ARSAA||
+alias 1a adduswrec LGRPT|ARS1A||
+alias ud adduswrec LGRPT|ARSUD||
+alias wt adduswrec LGRPT|ARSWT||
+alias it adduswrec LGRPT|ARSITS||
+alias rl adduswrec LGRPT|HRSRL|UTTA||
+alias tpi adduswrec LGRPT|ARSTPI||
+alias urs adduswrec LGRPT|ARSURS||
+alias rf adduswrec LGRPT|HRSRF|ARS1A||
+alias ig adduswrec LGRPT|HRSIG|ARSUA||
+alias twbh adduswrec LGRPT|HRSBH|ARSWB||

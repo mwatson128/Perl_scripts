@@ -1,0 +1,1005 @@
+#!/bin/perl
+#*TITLE - %M% - Perl script to run daily offline processes - %I%
+#*SUBTTL Preface, and environment 
+#
+#  (]$[) %M%:%I% | CDATE=%U% %G%
+#
+#
+#	Copyright (C) 1999 THISCO, Inc.
+#	      All Rights Reserved
+#
+#
+
+# internal global variables
+($lgrpt_file, $lgrpt_plusfile, $lgrej_file, $lgrptco_file);
+($lgrptsum_file, $lgrptvol_file, $lgrpterr_file, $lgrptco2_file);
+(@lgrptsum_yesterfile);
+($logxerr_size, $lgrpt_dir, $lgrpt_codir, $lgrej_dir);
+($arcdir_sum, $arcdir_vol, $arcdir_logxerr);
+$zone = `uname -n`;
+chomp $zone;
+
+#*SUBTTL lgrpt_init - initialize variables for lgrpt processing
+#
+# lgrpt_init()
+#
+# initialize variables for processing of lgrpt information
+#
+# parameters:
+#   none
+#
+# globals:
+#   @lgrpt_file		- the separate lgrpt log files
+#   @lgrpt_plusfile	- the separate lgrpt plus log files
+#   @lgrptsum_file	- the separate summary files
+#   $lgrptsum_file	- the united summary file
+#   $lgrpt_dir		- directory from which LGRPT files are retrieved
+#   $lgrpt_codir	- directory from which CO files are retrieved 
+#   $lgrej_dir		- directory from which LGREJ files are retrieved
+#   $arcdir_sum		- directory into which LGRPT SUM files are stored
+#   $arcdir_vol		- directory into which LGRPT VOL files are stored
+#   $arcdir_logxerr	- directory into which LOGX ERR files are stored
+#
+# locals (inherited):
+#   rtn_val	- return value to main; modifiable by all sub's called
+#
+# locals (defined):
+#   none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val	- return value from subroutines and commands
+#
+{
+  # parameters set from environment variables
+  # (others are set in offln.pl)
+  $lgrpt_dir = $ENV{lgrpt_dir};
+  $lgrpt_codir = $ENV{lgrpt_codir};
+  $lgrej_dir = $ENV{lgrej_dir};
+  $logxerr_size = $ENV{logxerr_size};
+  $arcdir_sum = $ENV{arcdir_sum};
+  $arcdir_vol = $ENV{arcdir_vol};
+  $arcdir_logxerr = $ENV{arcdir_logxerr};
+  
+  # date strings for input/output files
+  my($cdate) = `getydate -t ${date} -d 0`;
+  my($t_cdate) = `getydate -t ${date} -d 1`;
+
+  # date strings for names of old files (to remove before starting)
+  my($y_cdate) = `getydate -t ${date} `;
+
+  # date string for billing file
+  $ndate = `getydate -t ${date} -d 0 -o sig`;
+
+  # INPUT FILES
+  $lgrej_file = "rej${cdate}.lg";
+  $lgrpt_file = "rpt${cdate}.lg";
+  $lgrpt_plusfile = "rpt${cdate}.lg+";
+  $lgrptco_file = "rpt${cdate}.co";
+
+  # OUTPUT FILES
+  $lgrptco2_file = "rpt${t_cdate}.co";
+  $lgrptsum_file = "rpt${cdate}.sum";
+  $lgrptvol_file = "rpt${cdate}.vol";
+  $lgrpterr_file = "rpt${cdate}.err";
+  $dtally_interfile = "dtally${cdate}.int";
+
+  # YESTERDAY's FILES
+  $lgrpt_yesterfile[0] = "rej${y_cdate}.lg";
+  $lgrpt_yesterfile[1] = "rpt${y_cdate}.lg";
+  $lgrpt_yesterfile[2] = "rpt${y_cdate}.co";
+  $lgrpt_yesterfile[3] = "rpt${y_cdate}.err";
+
+  $DBUG && print DJUNK "\nLGRPT\n-----\n";
+  $DBUG && print DJUNK "INPUT FILES\n";
+  $DBUG && print DJUNK "lgrej_file: $lgrej_file\n";
+  $DBUG && print DJUNK "lgrpt_file: $lgrpt_file\n";
+  $DBUG && print DJUNK "lgrpt_plusfile: $lgrpt_plusfile\n";
+  $DBUG && print DJUNK "lgrptco_file: $lgrptco_file\n";
+  $DBUG && print DJUNK "OUTPUT FILES\n";
+  $DBUG && print DJUNK "ndate: $ndate (${ndate}.billing)\n";
+  $DBUG && print DJUNK "lgrptco2_file: $lgrptco2_file\n";
+  $DBUG && print DJUNK "lgrptsum_file: $lgrptsum_file\n";
+  $DBUG && print DJUNK "lgrptvol_file: $lgrptvol_file\n";
+  $DBUG && print DJUNK "lgrpterr_file: $lgrpterr_file\n";
+  $DBUG && print DJUNK "YESTERDAY'S OLD FILES\n";
+  $DBUG && print DJUNK "lgrpt_yesterfile: ", join(' ', @lgrpt_yesterfile), "\n";
+
+}
+
+#*SUBTTL lgrpt - run entire gammet of LGRPT processing
+#
+# lgrpt()
+#
+# run entire thread for processing of LGRPT information
+#
+# parameters:
+#   none
+#
+# globals:
+#
+# locals (inherited):
+#   rtn_val	- return value to main; modifiable by all sub's called
+#
+# locals (defined):
+#   none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val	- return value from subroutines and commands
+#
+
+sub lgrpt 
+{
+
+  LOGENTER("LGRPT");
+  !($rtn_val = &lgrpt_extract) || return($rtn_val);
+  !($rtn_val = &lgrpt_db) || return($rtn_val);
+  LOGEXIT("LGRPT");
+
+  return($rtn_val);
+}
+
+#*SUBTTL lgrpt_extract - get the LGRPT files and run the extract utilities
+#
+# lgrpt_extract()
+#
+# run the data extraction sub-thread for processing of LGRPT information
+#
+# parameters:
+#   none
+#
+# globals:
+#
+# locals (inherited):
+#   rtn_val	- return value to main; modifiable by all sub's called
+#
+# locals (defined):
+#   none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val	- return value from subroutines and commands
+#
+
+sub lgrpt_extract 
+{
+
+  LOGENTER("LGRPT_EX");
+  !($rtn_val = &lgrpt_rcp) || return($rtn_val);
+  LOGEXIT("LGRPT_EX");
+
+  return($rtn_val);
+}
+
+#*SUBTTL lgrpt_db - run the LGRPT database processing and dependants
+#
+# lgrpt_db()
+#
+# run the database loading sub-thread for processing of LGRPT information
+#
+# parameters:
+#   none
+#
+# globals:
+#
+# locals (inherited):
+#   rtn_val	- return value to main; modifiable by all sub's called
+#
+# locals (defined):
+#   none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val	- return value from subroutines and commands
+#
+
+sub lgrpt_db 
+{
+
+  LOGENTER("LGRPT_DB");
+  !($rtn_val = &lgrpt_vtally) || return($rtn_val); #parallel
+  !($rtn_val = &lgrpt_dtally) || return($rtn_val); #parallel
+  !($rtn_val = &lgrpt_ptally) || return($rtn_val); #parallel
+  LOGEXIT("LGRPT_DB");
+
+  # now that all sub-threads are through with the files, it is ok to
+  # remove them---providing there isn't a "notarc" file
+
+  # remove vol file
+  if (-e "ARC.${lgrptvol_file}.notarc") {
+    print LOGFILE "CANNOT REMOVE: archive of ${lgrptvol_file} failed.\n";
+  }
+  else {
+    print LOGFILE "Removing ${lgrptvol_file}.\n";
+    system("rm -f  ${lgrptvol_file}");
+  }
+
+  # remove sum file
+  if (-e "ARC.${lgrptsum_file}.notarc") {
+    print LOGFILE "CANNOT REMOVE: archive of ${lgrptsum_file} failed.\n";
+  }
+  else {
+    print LOGFILE "Removing ${lgrptsum_file}.\n";
+    system("rm -f  ${lgrptsum_file}");
+  }
+
+  return($rtn_val);
+}
+
+#*SUBTTL lgrpt_rcp - remote copies the QCHECK input files from production
+#
+# lgrpt_rcp
+#
+# remote copies the LGRPT input files from production
+#
+# parameters:
+#   none
+#
+# globals:
+#
+# locals (inherited):
+#   rtn_val	- return value to main; modifiable by all sub's called
+#
+# locals (defined):
+#   none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val	- return value from subroutines and commands
+#
+
+sub lgrpt_rcp 
+{
+
+  LOGENTER("LGRPT_RCP");
+
+  # test for notok file
+  my($notok) = "LGRPT_EX.notok";
+  my($subok) = "LGRPT_LOGX.ok";
+  if (-e ${notok}) {
+    $rtn_val = 3011;
+    print LOGFILE "CANNOT EXECUTE: there is another LGRPT_EX that is incomplete.\n";
+    error_out($E_LGRPTNOTOK, 0);
+    return($rtn_val);
+  }
+  else {
+    system("touch ${notok}");
+  }
+
+  # remove old LGRPT and LGREJ files
+  # [[what if we only removed yesterday's files? e.g., rpt${date-1}.lg ]]
+  # system("rm -f rpt??????.lg rej??????.lg");
+  my($filestring) = join(' ', @lgrpt_yesterfile);
+  system("rm -f ${filestring}");
+
+  # get USW Reject Log
+  print(LOGFILE "start CP of ${lgrej_file}: ", `date`);
+  if ($rtn_val = system ("cp ${lgrej_dir}/${lgrej_file} . >>$logfile 2>>$logfile")) {
+
+    # there was an error.  call error handler and exit
+    error_out($E_RCPLGREJ, $rtn_val);
+    return($rtn_val);
+  }
+
+  # get LGRPT Carry-Over file
+  # 
+  # check to see if carryover file is here locally.  
+  # if not, get it from production
+  if (!-e ${lgrptco_file}) {
+    print(LOGFILE "WARNING: ${lgrptco_file} not in execute directory\n");
+    print(LOGFILE "start CP of ${lgrptco_file}: ", `date`);
+    if ($rtn_val = system ("cp ${lgrpt_codir}/${lgrptco_file} . >>$logfile 2>>$logfile")) {
+  
+      # there was an error.  call error handler and exit
+      error_out($E_RCPLGRPTCO, $rtn_val);
+      return($rtn_val);
+    }
+  }
+
+  # get USW Report Log
+  # 
+  # check to see if report log is compressed, or even there
+  print(LOGFILE "start RCP of ${lgrpt_file}.Z: ", `date`);
+  if ($rtn_val = 
+      system ("cp ${lgrpt_dir}/${lgrpt_file}* . >>$logfile 2>>$logfile")) {
+
+    # there was an error.  call error handler and exit
+    error_out($E_RCPLGRPTZ, $rtn_val);
+    return($rtn_val);
+  }
+ 
+  # gunzip the LGRPT file
+  print(LOGFILE "start UNZIP of ${lgrpt_file} files: ", `date`);
+  if ($rtn_val = 
+      system("gunzip ${lgrpt_file}* >> $logfile 2>> $logfile")) {
+
+    # there was an error.  call error handler and exit
+    error_out($E_UNCOMPLGRPT, $rtn_val);
+    return($rtn_val);
+  }
+
+  # first assure lgrpt_logx() that he can run system("touch ${subok}");
+  
+  # all processing here is done, it's ok to remove the notok files
+  system("rm -f ${notok}");
+
+  # CP is complete, process what you pulled over with lgrpt_logx()
+  !($rtn_val = &lgrpt_logx) || return($rtn_val);
+
+  LOGEXIT("LGRPT_RCP");
+
+  return($rtn_val);
+}
+
+#*SUBTTL lgrpt_logx - run LGRPT extraction routine and all dependants
+#
+# lgrpt_logx()
+#
+# extract data from LGRPT using LOGX utility, run archive of output
+#
+# parameters:
+#   none
+#
+# globals:
+#
+# locals 
+#   inherited:
+#     rtn_val	- return value to main; modifiable by all sub's called
+#
+#   defined:
+#     none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val	- return value from subroutines and commands
+#
+
+sub lgrpt_logx 
+{
+  LOGENTER("LGRPT_LOGX");
+
+  # test for notok files
+  my($notok) = "LGRPT_EX.notok";
+  my($subok) = "LGRPT_LOGX.ok";
+  if ((-e ${notok}) && !(-e ${subok})) {
+    $rtn_val = 3012;
+    print LOGFILE "CANNOT EXECUTE: there is another LGRPT_EX that is incomplete.\n";
+    error_out(E_LOGXNOTOK, 0);
+    return($rtn_val);
+  }
+  else {
+    system("touch ${notok}");
+    system("rm -f ${subok}");
+  }
+
+  # extract information from LGRPT
+  print(LOGFILE "start of LOGX for ${date}: ", `date`);
+  if ($rtn_val = system("nice logx -c /$zone/loghist/master/master.cfg ${lgrpt_file} >> $logfile 2>> $logfile")) {
+    error_out($E_LOGX, $rtn_val);
+    return($rtn_val);
+  }
+
+  # put the carryover file in a safe place right away
+  print(LOGFILE "start CP of ${lgrptco2_file} to $lgrpt_codir: ", `date`);
+  if ($rtn_val = system ("cp ${lgrptco2_file} ${lgrpt_codir} >>$logfile 2>>$logfile")) {
+    error_out($E_ARCRCPLGRPTCO, $rtn_val);
+    return($rtn_val);
+  }
+
+  # send out warning mail if the logx error file is large 
+  if (1 == `find ${lgrpterr_file} -size +${logxerr_size}c -print | wc -l`) {
+    mail_out($M_LOGXERRFILE, $rtn_val);
+  }
+
+  # make a humanly readable version of the logx error file
+  if ($arcdir_logxerr ne "/dev/null") {
+      system("ulgscan -f ${lgrpterr_file} ${lgrpt_file} > ${arcdir_logxerr}/${lgrpterr_file} 2>>/dev/null");
+  }
+
+  # archive the LGRPT OUTPUT
+  !($rtn_val = &lgrpt_archive) || return($rtn_val);
+
+  # all processing here is done, it's ok to remove the notok files
+  system("rm -f ${notok}");
+
+  LOGEXIT("LGRPT_LOGX");
+
+  return($rtn_val);
+}
+
+#*SUBTTL lgrpt_archive - archive LGRPT output files and compress
+#
+# lgrpt_archive()
+#
+# archive the summary and volume files to their directories & compress them
+#
+# parameters:
+#   none
+#
+# globals:
+#
+# locals (inherited):
+#   rtn_val	- return value to main; modifiable by all sub's called
+#
+# locals (defined):
+#   none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val	- return value from subroutines and commands
+#
+
+sub lgrpt_archive 
+{
+  LOGENTER("LGRPT_ARC");
+
+  # ensure that the sumfile doesn't get removed if the archive fails
+  my($notarc1) = "ARC.${lgrptsum_file}.notarc";
+  system("touch ${notarc1}");
+
+  # ensure that the volfile doesn't get removed if the archive fails
+  my($notarc2) = "ARC.${lgrptvol_file}.notarc";
+  system("touch ${notarc2}");
+
+  # archive the LGRPT-SUM file
+  print(LOGFILE "start for archive of ${lgrptsum_file}: ", `date`);
+  if ($rtn_val = &archive(${arcdir_sum}, ${lgrptsum_file})) {
+
+    # there was an error.  call error handler and exit
+    $rtn_val = warn_out($W_ARCHIVESUM, $rtn_val);
+    return($rtn_val);
+  }
+  else {
+
+    # the archive completed successfully, remove the notarc file
+    system("rm -f ${notarc1}");
+  }
+
+  # archive the LGRPT-VOL file
+  print(LOGFILE "start for archive of ${lgrptvol_file}: ", `date`);
+  if ($rtn_val = &archive(${arcdir_vol}, ${lgrptvol_file})) {
+
+    # there was an error.  call error handler and exit
+    $rtn_val = warn_out($W_ARCHIVEVOL, $rtn_val);
+    return($rtn_val);
+  }
+  else {
+
+    # the archive completed successfully, remove the notarc file
+    system("rm -f ${notarc2}");
+  }
+
+  LOGEXIT("LGRPT_ARC");
+
+  return($rtn_val);
+}
+
+1;
+
+#*SUBTTL structures for error_out and warning_out mailings:   lgrpt_rcp()
+#
+# variables are refernces to a hash with the following keys:
+#   subject	- phrase to go into the subject of the mail message
+#   rs_here	- (restart here) the command-line option needed to 
+#                 start offln.pl 
+#   mf	- (missed fork) the command-line option of any subthreads that
+#	  might be missed should you start at 'rs_here'.  Whether this
+#  	  option is included in the restart command mailed to the
+#  	  operators depends upon if the original command line option
+#    	  (for the run of offln.pl that produced this mail) would have
+#  	  executed the subthreads.  A flag indicating this is in offln.pl 
+#  	  in the hash %procs, under the key (of the same name) 'mf'.
+#   rs_higher	- (restart higher) oftentimes if the particular thread
+#         	  that errored-out, errored-out during the first function
+#         	  of its first subthread, it would be more effecient to 
+#       	  restart the thread than to use the 'rs_here' option, 
+#        	  followed by the 'mf' option(s).  This is the command-line
+#        	  option that would restart the thread.
+#   body	- this is the body of the mail message.  In it should be 
+#    		  a description of the problem, possible reasons for it's 
+#       	  occurrence, potential solutions for the problem, and 
+#        	  what the operator needs to do to restart the script.
+#
+
+
+$E_LGRPTNOTOK = { 'subject', "LGRPT thread failed", 
+  'rs_here', "LGRPT_EX", 
+  'mf', "LGRPT_DB", 
+  'rs_higher_f', 1, 
+  'rs_higher', "LGRPT", 
+'body', "the LGRPT.notok file was in existance when this thread tried to run
+
+Another LGRPT thread could currently be running.  Check to be sure
+that there isn't.  If another is running, wait for it to complete before
+restarting.
+
+Or a previous LGRPT thread could have failed.  Check the ${logfile} and 
+past mailings to determine if this is the case.  If so, see that the 
+failed process is restarted.
+
+To restart:
+  o remove the file 'LGRPT.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+$E_RCPLGREJ = {
+  'subject', "CP of LGREJ file failed", 
+  'rs_here', "LGRPT_EX", 
+  'mf', "LGRPT_DB", 
+  'rs_higher_f', 1, 
+  'rs_higher', "LGRPT", 
+'body', "the remote copy of the LGREJ file ${lgrej_file} failed
+
+Check to make sure that the remote file exists in ${remotehost}:${lgrej_dir}/.
+If it is not there, figure out why, and where it's gone to, then restart.
+
+Check to make sure that the permissions are set up correctly on the remote 
+machine (${remotehost}) for remote copying as the '${remotelogin}' login
+
+Also this could be the result of the disk filling up.
+
+To restart:
+  o remove the file 'LGRPT.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+
+$E_RCPSUMREJ = {
+  'subject', "LGREJ file failed checksum", 
+  'rs_here', "LGRPT_EX", 
+  'mf', "LGRPT_DB", 
+  'rs_higher_f', 1, 
+  'rs_higher', "LGRPT", 
+'body', 
+"checksum reported that the remote copy of ${lgrej_file} was flawed
+
+There may have been a flaw in the transfer of the file.  Double check the 
+error by using the UNIX command 'sum' on the local and remote file.  The 
+problem usually clears up if you just try again.
+
+To restart:
+  o remove the file 'LGRPT.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+
+$E_RCPLGRPTCO = {
+  'subject', "CP of LGRRPT's Carry-Over file failed", 
+  'rs_here', "LGRPT_EX", 
+  'mf', "LGRPT_DB", 
+  'rs_higher_f', 1, 
+  'rs_higher', "LGRPT", 
+'body', "the remote copy of the LGRPT Carry-Over file ${lgrptco_file} failed
+
+Check to make sure that the remote file exists in ${remotehost}:${lgrpt_dir}/.
+If it is not there, figure out why, and where it's gone to, then restart.
+
+Check to make sure that the permissions are set up correctly on the remote 
+machine (${remotehost}) for remote copying as the '${remotelogin}' login
+
+Also this could be the result of the disk having been filling up.
+
+If you are trying to \"catch-up\" off-line processing without a valid
+carry-over file, type 'touch ${lgrptco_file}' in ${rundir}.
+o In cases such as this you should only run '$ENV{0} ${date} LGRPT_EX'
+  to produce a valid carry-over file for the following day's LOGX. 
+  (You should not load data into the database without a valid carry-over 
+  file.)
+o Once the above is done, remove the file 
+    ${localhost}:${arcdir_sum}/${lgrptsum_file}.Z
+  It is invalid due to the running of LOGX without a real carry-over file.
+o Be sure to run '$ENV{0} $date LGRPT' once a valid ${lgrptco_file}
+  is produced by the previous day's LOGX.  This will produce a valid 
+  ${lgrptsum_file}, and load valid data into the database for ${date}.
+
+To restart:
+  o remove the file 'LGRPT.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+
+$E_RCPSUMRPTCO = {
+  'subject', "LGRPT Carry-Over file failed checksum", 
+  'rs_here', "LGRPT_EX", 
+  'mf', "LGRPT_DB", 
+  'rs_higher_f', 1, 
+  'rs_higher', "LGRPT", 
+'body', 
+"checksum reported that the remote copy of ${lgrptco_file} was flawed
+
+There may have been a flaw in the transfer of the file.  Double check the 
+error by using the UNIX command 'sum' on the local and remote file.  The 
+problem usually clears up if you just try again.
+
+To restart:
+  o remove the file 'LGRPT.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+
+$E_RCPLGRPTZ = {
+  'subject', "CP of compressed LGRRPT file failed", 
+  'rs_here', "LGRPT_EX", 
+  'mf', "LGRPT_DB", 
+  'rs_higher_f', 1, 
+  'rs_higher', "LGRPT", 
+'body', "the remote copy of the compressed LGRPT file ${lgrpt_file}.Z failed
+
+Check to make sure that the remote file exists in ${remotehost}:${lgrpt_dir}/.
+If it is not there, figure out why, and where it's gone to, then restart.
+
+Check to make sure that the permissions are set up correctly on the remote 
+machine (${remotehost}) for remote copying as the '${remotelogin}' login
+
+Also this could be the result of the local disk having been filling up.
+
+To restart:
+  o remove the file 'LGRPT.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+
+$E_RCPSUMRPTZ = {
+  'subject', "LGRPT file failed checksum", 
+  'rs_here', "LGRPT_EX", 
+  'mf', "LGRPT_DB", 
+  'rs_higher_f', 1, 
+  'rs_higher', "LGRPT", 
+'body', 
+"checksum reported that the remote copy of ${lgrpt_file}.Z was flawed
+
+There may have been a flaw in the transfer of the file.  Double check the 
+error by using the UNIX command 'sum' on the local and remote file.  The 
+problem usually clears up if you just try again.
+
+To restart:
+  o remove the file 'LGRPT.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+
+$E_UNCOMPLGRPT = {
+  'subject', "GUNZIP of LGRRPT file failed", 
+  'rs_here', "LGRPT_EX", 
+  'mf', "LGRPT_DB", 
+  'rs_higher_f', 1, 
+  'rs_higher', "LGRPT", 
+'body', "the gunzip of the LGRPT file ${lgrpt_file}.Z failed
+
+The disk may have filled up.  If it has, remove any unneccessary files;
+or (if all files are important) if other offline processes are running,
+wait for them to archive their data files and free up some room (if the 
+disk filling up didn't crash those processes as well).  If old data files
+are filling up disk space, you may need to archive them by hand using the
+'LGRPT_ARC' or 'LGRPT_ARC' options to '$ENV{0}'.
+
+(Look at the Appendix of the offline document to help determine 
+which files you can remove to reclaim some disk space.)
+
+To restart:
+  o remove the file 'LGRPT.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+
+
+$E_RCPLGRPT = {
+  'subject', "CP of LGRRPT file failed", 
+  'rs_here', "LGRPT_EX", 
+  'mf', "LGRPT_DB", 
+  'rs_higher_f', 1, 
+  'rs_higher', "LGRPT", 
+'body', "the remote copy of LGRPT file ${lgrpt_file} failed
+
+Check to make sure that the remote file exists in ${remotehost}:${lgrpt_dir}/.
+If it is not there, figure out why, and where it's gone to, then restart.
+
+Check to make sure that the permissions are set up correctly on the remote 
+machine (${remotehost}) for remote copying as the '${remotelogin}' login
+
+Also this could be the result of the local disk having been filling up.
+
+To restart:
+  o remove the file 'LGRPT.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+
+$E_RCPSUMRPT = {
+  'subject', "LGRPT file failed checksum", 
+  'rs_here', "LGRPT_EX", 
+  'mf', "LGRPT_DB", 
+  'rs_higher_f', 1, 
+  'rs_higher', "LGRPT", 
+'body', 
+"checksum reported that the remote copy of ${lgrpt_file} was flawed
+
+There may have been a flaw in the transfer of the file.  Double check the 
+error by using the UNIX command 'sum' on the local and remote file.  The 
+problem usually clears up if you just try again.
+
+To restart:
+  o remove the file 'LGRPT.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+
+$E_RCPLGRPTALTZ = {
+  'subject', "CP of LGRRPT file failed", 
+  'rs_here', "LGRPT_EX", 
+  'mf', "LGRPT_DB", 
+  'rs_higher_f', 1, 
+  'rs_higher', "LGRPT", 
+'body', "the remote copy of the compressed LGRPT file ${lgrpt_file}.Z failed
+
+Check to make sure that the file exists in ${remotehost}:${lgrpt_dir}/.
+If it is not there, figure out why, and where it's gone to, then restart.
+
+Check to make sure that the permissions are set up correctly on the remote 
+machine (${remotehost}) for remote copying as the '${remotelogin}' login
+
+Also this could be the result of the local disk having been filling up.
+
+To restart:
+  o remove the file 'LGRPT.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+
+$E_RCPLGRPTNA = {
+  'subject', "LGRRPT file could not be found", 
+  'rs_here', "LGRPT_EX", 
+  'mf', "LGRPT_DB", 
+  'rs_higher_f', 1, 
+  'rs_higher', "LGRPT", 
+'body', "could not locate any form of LGRPT file ${lgrpt_file} on ${remotehost}
+
+The script looks for the LGRPT file in the following locations on ${remotehost}:
+  ${lgrpt_dir}/     (compressed or uncompressed)
+  ${lgrpt_dir}/  (compressed only)
+
+If it is not in these places, figure out why, put it there, then restart.
+
+Check to make sure that the permissions are set up correctly on the remote 
+machine (${remotehost}) for remote copying as the '${remotelogin}' login
+
+Also the report log could only be available from backup tape.
+
+To restart:
+  o remove the file 'LGRPT.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+
+#*SUBTTL structures for error_out and warning_out mailings:   lgrpt_logx
+#
+# variables are refernces to a hash with the following keys:
+#   subject	- phrase to go into the subject of the mail message
+#   rs_here	- (restart here) the command-line option needed to 
+#                 start offln.pl 
+#   mf	- (missed fork) the command-line option of any subthreads that
+#	  might be missed should you start at 'rs_here'.  Whether this
+#  	  option is included in the restart command mailed to the
+#  	  operators depends upon if the original command line option
+#    	  (for the run of offln.pl that produced this mail) would have
+#  	  executed the subthreads.  A flag indicating this is in offln.pl 
+#  	  in the hash %procs, under the key (of the same name) 'mf'.
+#   rs_higher	- (restart higher) oftentimes if the particular thread
+#         	  that errored-out, errored-out during the first function
+#         	  of its first subthread, it would be more effecient to 
+#       	  restart the thread than to use the 'rs_here' option, 
+#        	  followed by the 'mf' option(s).  This is the command-line
+#        	  option that would restart the thread.
+#   body	- this is the body of the mail message.  In it should be 
+#    		  a description of the problem, possible reasons for it's 
+#       	  occurrence, potential solutions for the problem, and 
+#        	  what the operator needs to do to restart the script.
+#
+
+
+$E_LOGXNOTOK = { 'subject', "LGRPT thread failed", 
+  'rs_here', "LGRPT_LOGX", 
+  'mf', "LGRPT_DB", 
+  'rs_higher_f', 0, 
+  'rs_higher', "", 
+'body', "the LGRPT.notok file was in existance when LOGX tried to run
+
+Another LGRPT thread  could currently be running.  Check to be sure that 
+there isn't.  If another is running, wait for it to complete before 
+restarting.
+
+Or a previous LGRPT thread could have failed.  Check the ${logfile} and 
+past mailings to determine if this is the case.  If so, see that the 
+failed process is restarted.
+
+To restart:
+  o remove the file 'LGRPT.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+
+$E_LOGX = {
+  'subject', "LOGX failed (LGRPT Extract program)", 
+  'rs_here', "LGRPT_LOGX", 
+  'mf', "LGRPT_DB", 
+  'rs_higher_f', 0, 
+  'rs_higher', "", 
+'body', "the program LOGX bombed out while processing the day $date
+
+One of the files necessary to running may be absent
+  ${lgrpt_file}
+  ${lgrpt_file}
+  ${lgrptco_file}
+If so, back up to the 'LGRPT' or 'LGRPT_EX' command-line option to 
+get them, or copy them by hand to the ${rundir}.
+
+The disk may have filled up.  If it has, remove any unneccessary files
+(see below); or (if all files are important) if other offline processes 
+are running, wait for them to archive their data files and free up some 
+room (if the disk filling up didn't crash those processes as well).  
+If old data files are filling up disk space, you may need to archive them 
+by hand using the 'LGPER_ARC' or 'LGRPT_ARC' options to '$ENV{0}'.
+
+If that's not it, check the ${logfile} to see what the problem was.  
+If the trouble cannot be fixed, inform someone immediately using the 
+on-call escalation procedures
+
+(Look at the Appendix of the offline document to help determine 
+which files you can remove to reclaim some disk space.)
+
+To restart:
+  o remove the file 'LGRPT.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+
+$E_ARCRCPLGRPTCO = {
+  'subject', "CP ARCHIVE of LGRPT Carry-Over file", 
+  'rs_here', "LGRPT_ARC", 
+  'mf', "LGRPT_DB", 
+  'rs_higher_f', 0, 
+  'rs_higher', "", 
+'body', 
+"the archival remote copy of the LGRPT Carry-Over file ${lgrptco_file} failed
+
+Check to make sure that the file exists in ${localhost}:${rundir}/.
+If it is not there, figure out why, and where it's gone to, then restart.
+
+Check to make sure that the permissions are set up correctly on the remote 
+machine (${remotehost}) for remote copying as the '${remotelogin}' login
+
+copy over by hand with the following command:
+  cp ${lgrptco2_file} ${lgrpt_dir} 
+
+Also this could be the result of the disk having been filling up.
+If that's not it, check the ${logfile} to see what the problem was.  
+
+If the trouble cannot be fixed, inform someone immediately using the 
+on-call escalation procedures
+
+To restart after the problem is solved:
+  o remove the file 'LGRPT.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+
+$E_RCPCOTOPROD = {
+  'subject', "tomorrow's LGRPT Carry-Over file failed checksum", 
+  'rs_here', "LGRPT_ARC", 
+  'mf', "LGRPT_DB", 
+  'rs_higher_f', 1, 
+  'rs_higher', "LGRPT", 
+'body', 
+"checksum reported that the remote copy of ${lgrpt_file} was flawed
+
+There may have been a flaw in the transfer of the file.  Double check the 
+error by using the UNIX command 'sum' on the local and remote file.  The 
+problem usually clears up if you just try again.
+
+copy by hand with the following command, and check the sum again:
+  cp ${lgrptco2_file} ${lgrpt_dir} 
+
+If the trouble cannot be fixed, inform someone immediately using the 
+on-call escalation procedures
+
+To restart after the problem is solved:
+  o remove the file 'LGRPT.notok'
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+$M_LOGXERRFILE = {
+  'subject', "LOGX error file is large", 
+  'maillist', $ENV{DL_logxerr}, 
+'body', 
+"the error file for LOGX, ${lgrpterr_file} was larger than ${logxerr_size} bytes
+
+check out ${arcdir_logxerr}/${lgrpterr_file} for the errors
+"};
+
+
+#*SUBTTL structures for error_out and warning_out mailings:  lgrpt_archive()
+#
+# variables are refernces to a hash with the following keys:
+#   subject	- phrase to go into the subject of the mail message
+#   rs_here	- (restart here) the command-line option needed to 
+#                 start offln.pl 
+#   mf	- (missed fork) the command-line option of any subthreads that
+#	  might be missed should you start at 'rs_here'.  Whether this
+#  	  option is included in the restart command mailed to the
+#  	  operators depends upon if the original command line option
+#    	  (for the run of offln.pl that produced this mail) would have
+#  	  executed the subthreads.  A flag indicating this is in offln.pl 
+#  	  in the hash %procs, under the key (of the same name) 'mf'.
+#   rs_higher	- (restart higher) oftentimes if the particular thread
+#         	  that errored-out, errored-out during the first function
+#         	  of its first subthread, it would be more effecient to 
+#       	  restart the thread than to use the 'rs_here' option, 
+#        	  followed by the 'mf' option(s).  This is the command-line
+#        	  option that would restart the thread.
+#   body	- this is the body of the mail message.  In it should be 
+#    		  a description of the problem, possible reasons for it's 
+#       	  occurrence, potential solutions for the problem, and 
+#        	  what the operator needs to do to restart the script.
+#
+
+
+$W_ARCHIVESUM = {
+  'subject', "ARCHIVE of LGRPT summary file failed", 
+  'rs_here', "LGRPT_ARC", 
+'body', "the archive of ${lgrptsum_file} into ${arcdir_sum}/ failed
+
+512: No space left on device
+The disk may have filled up.  If it has, you will need to remove old
+or unneccessary files.  Procedures for dealing with this situation are
+covered in Appendix A of the 'USW Offline-Processing Operations 
+Procedures' document found on the website.
+
+256: Permission denied
+This file may already have been archived. If the archived file already
+exists and is deemed bad, move it to a minus file and archive by hand.
+
+If that's not it, check the ${logfile} to see what the problem was.  
+If the trouble cannot be fixed, inform someone in the morning.
+
+To archive by hand:
+  o enter the command 'nohup $ENV{0} $date LGRPT_ARC &'
+"};
+
+$W_ARCHIVEVOL = {
+  'subject', "ARCHIVE of LGRPT volume file failed", 
+  'rs_here', "LGRPT_ARC", 
+'body', "the archive of ${lgrptvol_file} into ${arcdir_vol}/ failed
+
+512: No space left on device
+The disk may have filled up.  If it has, you will need to remove old
+or unneccessary files.  Procedures for dealing with this situation are
+covered in Appendix A of the 'USW Offline-Processing Operations 
+Procedures' document found on the website.
+
+256: Permission denied
+This file may already have been archived. If the archived file already
+exists and is deemed bad, move it to a minus file and archive by hand.
+
+If that's not it, check the ${logfile} to see what the problem was.  
+If the trouble cannot be fixed, inform someone in the morning.
+
+To archive by hand:
+  o enter the command 'nohup $ENV{0} $date LGRPT_ARC &'
+"};
+
+1;

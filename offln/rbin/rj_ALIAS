@@ -1,0 +1,19 @@
+alias . read
+alias p rdprev
+alias d deluswrec
+alias sd display dmpdat
+
+alias 1p adduswrec LGREJ|IPNWS-A2||
+alias wb adduswrec LGREJ|IPNWB-A2||
+alias 1a adduswrec LGREJ|IPN1A-A2||
+alias 1a2 adduswrec LGREJ|IPN1A2-A2||
+alias 1s adduswrec LGREJ|IPN1S-A2||
+alias aa adduswrec LGREJ|IPNAA4-A2||
+alias mc adduswrec LGREJ|IPNMC-A2||
+alias mc2 adduswrec LGREJ|IPNMC2-A2||
+alias tl adduswrec LGREJ|IPNTL-A2||
+alias ud  adduswrec LGREJ|IPNUD-A2||
+alias udt adduswrec LGREJ|IPNUD-TRP2A||
+alias wt adduswrec LGREJ|IPNWT-B2||
+alias urs adduswrec LGREJ|IPNURS-B2||
+alias tpi adduswrec LGREJ|IPNTPI-B2||

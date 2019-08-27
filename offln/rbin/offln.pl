@@ -1,0 +1,789 @@
+#!/bin/perl
+#*TITLE - offln.pl - Perl script to run daily offline processes - 1.38
+#*SUBTTL Preface, and environment 
+#
+#  (]$[) offln.pl:1.38 | CDATE=15:05:20 11/21/06
+#
+#
+#	Copyright (C) 1996 THISCO, Inc.
+#	      All Rights Reserved
+#
+#
+
+# DEBUG initializations
+$DBUG = $ENV{DBUG}; 
+$DBUG && open(DJUNK, ">djunk");
+
+#globals for logfile formatting
+$layer = 0;
+$maxdepth = 8;
+
+# debug print of environment variables
+$DBUG && print DJUNK "ENVIRONMENT VARIABLES\n";
+$DBUG && print DJUNK "---------------------\n";
+foreach $key (keys(%ENV)) {
+  $DBUG && print DJUNK "  $key\t $ENV{$key}\n";
+}
+$DBUG && print DJUNK "\n";
+
+#*SUBTTL all - run all threads
+#
+# all()
+#
+# run all threads
+#
+# parameters:
+#   none
+#
+# globals:
+#
+# locals (inherited):
+#   rtn_val	- return value to main; modifiable by all sub's called
+#
+# locals (defined):
+#   none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val	- return value from subroutines and commands
+#
+
+sub all 
+{
+
+  LOGENTER("ALL");
+  !($rtn_val = &qcheck) || return($rtn_val);
+  !($rtn_val = &lgrpt) || return($rtn_val);
+  !($rtn_val = &lgper) || return($rtn_val);
+  LOGEXIT("ALL");
+
+  return($rtn_val);
+}
+
+#*SUBTTL extract - run all extract sub-threads
+#
+# extract()
+#
+# run all extract sub-threads
+#
+# parameters:
+#   none
+#
+# globals:
+#
+# locals (inherited):
+#   rtn_val	- return value to main; modifiable by all sub's called
+#
+# locals (defined):
+#   none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val	- return value from subroutines and commands
+#
+
+sub extract 
+{
+
+  LOGENTER("EXTRACT");
+  !($rtn_val = &lgrpt_extract) || return($rtn_val);
+  !($rtn_val = &qcheck_extract) || return($rtn_val);
+  LOGEXIT("EXTRACT");
+
+  return($rtn_val);
+}
+
+#*SUBTTL database - run all database sub-threads
+#
+# database()
+#
+# run all database sub-threads
+#
+# parameters:
+#   none
+#
+# globals:
+#
+# locals (inherited):
+#   rtn_val	- return value to main; modifiable by all sub's called
+#
+# locals (defined):
+#   none
+# 
+# mys:
+#   none
+#
+# returns:
+#   rtn_val	- return value from subroutines and commands
+#
+
+sub database 
+{
+
+  LOGENTER("DATABASE");
+  !($rtn_val = &lgrpt_db) || return($rtn_val);
+  !($rtn_val = &lgper_db) || return($rtn_val);
+  !($rtn_val = &qcheck_db) || return($rtn_val);
+  LOGEXIT("DATABASE");
+
+  return($rtn_val);
+}
+
+#############################################
+############ SCRIPT FUNCTIONS ###############
+#############################################
+
+#*SUBTTL LOGEXIT() - make exit record in LOGFILE
+#
+# LOGEXIT(name)
+#
+#  make exit record in LOGFILE
+#
+# parameters:
+#   name	- name of processing depth level :  (string)
+#
+# globals:
+#   $maxdepth	- the maximum number of symbols before the name
+#   $layer	- the depth of the processing calls
+#
+# locals (inherited/defined):
+#   none
+# 
+# mys:
+#   $i		- for loop counter
+#   $fnname	- name of processing level 
+#
+# returns:
+#   none
+#
+
+sub LOGEXIT
+{
+  my($i);
+  my($fnname, @other) = @_;
+
+  for ( $i = 0; $i < $layer; $i++) {
+    print LOGFILE "<";
+  }
+  for ( $i = 0; $i < $maxdepth - $layer; $i++) {
+    print LOGFILE "-";
+  }
+  print LOGFILE "  $fnname  ";
+  for ( $i = 0; $i < $maxdepth - $layer; $i++) {
+    print LOGFILE "-";
+  }
+  for ( $i = 0; $i < $layer; $i++) {
+    print LOGFILE ">";
+  }
+  print LOGFILE "\n";
+  $layer--;
+}
+
+#*SUBTTL LOGENTER() - make entry record in LOGFILE
+#
+# LOGENTER(name)
+#
+#  make entry record in LOGFILE
+#
+# parameters:
+#   name	- name of processing depth level :  (string)
+#
+# globals:
+#   $maxdepth	- the maximum number of symbols before the name
+#   $layer	- the depth of the processing calls
+#
+# locals (inherited/defined):
+#   none
+# 
+# mys:
+#   $i		- for loop counter
+#   $fnname	- name of processing level
+#
+# returns:
+#   none
+#
+
+sub LOGENTER 
+{
+  my($i);
+  my($fnname, @other) = @_;
+  
+  unless ($layer) {
+    print LOGFILE "\n";
+  }
+  $layer++;
+  for ( $i = 0; $i < $layer; $i++) {
+    print LOGFILE ">";
+  }
+  for ( $i = 0; $i < $maxdepth - $layer; $i++) {
+    print LOGFILE "-";
+  }
+  print LOGFILE "  $fnname  ";
+  for ( $i = 0; $i < $maxdepth - $layer; $i++) {
+    print LOGFILE "-";
+  }
+  for ( $i = 0; $i < $layer; $i++) {
+    print LOGFILE "<";
+  }
+  print LOGFILE "\n";
+}
+
+#*SUBTTL s_sum() - put intermediary files into temporary storage
+#
+# s_sum(sfile1, sfile2, remote directory, filename)
+#
+# checksum the local and remote files to ensure correct copying.
+#
+# parameters:
+#   $sum1	- file that receives checksum information on remote file
+#   $sum2	- file that receives checksum information on local file
+#   $dir	- full path name of remote directory 
+#   $file	- name of file in remote & local directories
+#
+# globals (inherited):
+#
+# globals (defined):
+#
+# locals (inherited):
+#
+# locals (defined):
+#
+# mys:
+#
+
+sub s_sum
+{
+  # get parameters
+  my($sum1, $sum2, $dir, $file) = @_;
+
+  # remote checksum
+  system("rsh -l ${remotelogin} ${remotehost} sum ${dir}/${file} | awk '{print \$1, \$2}' >$sum1 2>>$logfile"); 
+
+  # local checksum
+  system("sum ${file} | awk '{print \$1, \$2}' >$sum2 2>>$logfile");
+
+  # are they the same?
+  if ($rtn_val = system ("cmp $sum1 $sum2 >>$logfile 2>>$logfile")) {
+    return($rtn_val);
+  }
+
+  # everything is ok, remove those pesky files
+  system("rm -f $sum1 $sum2");
+  return($rtn_val);
+}
+
+#*SUBTTL archive() - put intermediary files into temporary storage
+#
+# archive(directory, filename)
+#
+# put intermediary files into temporary storage, copying then compressing
+#
+# parameters:
+#   $arcdir	- full path name of target directory for starage into
+#   $file	- name of file targeted for storage
+#
+# globals (inherited):
+#
+# globals (defined):
+#
+# locals (inherited):
+#
+# locals (defined):
+#
+# mys:
+#
+
+sub archive
+{
+
+  my($arcdir, $file, @other) = @_;
+
+  if ("/dev/null" eq $arcdir) {
+    print LOGFILE "$file was not to be archived\n";
+    return(0);
+  }
+
+  # copy the file to the archive directory
+  if ($rtn_val = system("gzip -c ${file} > ${arcdir}/${file}.gz")) {
+
+    # there was an error.  return value to calling function
+    return($rtn_val);
+  }
+
+  # make it write-over proof
+  system("chmod -w ${arcdir}/${file}.gz >> $logfile 2>> $logfile");
+}
+
+#*SUBTTL error_out - stop processing; send error to log and by mail
+#
+# error_out($error string, $error value)
+#
+# gather all of the information & try to determine the cause of the error,
+# report it in the logfile, and send some mail out to the operator explaining
+# what steps to take to continue processing.
+#
+# parameters:
+#
+# globals (inherited):
+#
+# globals (defined):
+#
+# locals (inherited):
+#
+# locals (defined):
+#
+# mys:
+#
+
+sub error_out 
+{
+  ($error_ref, $param2) = @_; 
+  my($argc) = @ARGV;
+  print LOGFILE "error value of $rtn_val\n";
+  print STDERR "error value of $rtn_val from offln.pl\n";
+
+  # set some things for the mailing
+  my($subject) = "OFFLN $ENV{'domain'} ${date}: $$error_ref{'subject'}";
+  my($bodyfile) = ".reason";
+  my($maillist) = $ENV{'DL_offln'};
+  my($restart) = ${arg};
+
+  # figure out what the operator has to do to restart the script
+  if ($procs{$arg}{'mf'}) {
+    if ($$error_ref{'rs_higher_f'}) {
+    $restart  = $$error_ref{'rs_higher'};
+    }
+    else {
+      $restart  = "$$error_ref{'rs_here'} $$error_ref{'mf'}";
+    }
+  }
+
+  # send mail reporting the mishap
+  open(BODY, ">${bodyfile}");
+  print BODY "FAILURE\n";
+  print BODY "Return value $rtn_val from: '$ENV{0} $date $cmdline_args' ",
+    "in '${arg}' option\n";
+  printf BODY $$error_ref{'body'}, $restart;
+  print BODY "\n(see ${localhost}:${rundir}/${logfile} for details)\n";
+  close(BODY);
+
+  system("/bin/mailx -s \"${subject}\" ${maillist} < ${bodyfile} >> /dev/null 2>> /dev/null");
+
+  # exit out of the calling routine level
+  LOGEXIT("ERROR: return value $rtn_val");
+}
+
+#*SUBTTL warn_out - continue processing, but complain to logfile
+#
+# warn_out($warn string, $warn value)
+#
+# gather all of the information & try to determine the cause of the warning,
+# report it in the logfile 
+#
+# parameters:
+#
+# globals (inherited):
+#
+# globals (defined):
+#
+# locals (inherited):
+#
+# locals (defined):
+#
+# mys:
+#
+
+sub warn_out 
+{
+  ($warn_ref, $param2) = @_; 
+  my($argc) = @ARGV;
+  print LOGFILE "warning value of $rtn_val\n";
+  print STDERR "warning value of $rtn_val from offln.pl\n";
+
+  # send mail reporting the mishap
+  my($subject) = "OFFLN $ENV{'domain'} ${date}: $$warn_ref{'subject'}";
+  my($bodyfile) = ".reason";
+  my($maillist) = $ENV{DL_offln};
+
+  # send mail reporting the mishap
+  open(BODY, ">${bodyfile}");
+  print BODY "WARNING\n";
+  print BODY "Return value $rtn_val from: '$ENV{0} $date $cmdline_args' in '${arg}' option\n";
+  print BODY $$warn_ref{'body'};
+  print BODY "\n(see ${localhost}:${rundir}/${logfile} for details)\n";
+  close(BODY);
+
+  system("/bin/mailx -s \"${subject}\" ${maillist} < ${bodyfile} >> /dev/null 2>> /dev/null");
+
+  # exit out of the calling routine level
+  LOGEXIT("WARNING: return value $rtn_val");
+  return(0);
+}
+
+#*SUBTTL mail_out - continue processing, but Send out mail
+#
+# mail_out($mail string, $return_value)
+#
+#
+# parameters:
+#
+# globals (inherited):
+#
+# globals (defined):
+#
+# locals (inherited):
+#
+# locals (defined):
+#
+# mys:
+#
+
+sub mail_out 
+{
+  ($mail_ref, $param2) = @_; 
+  my($argc) = @ARGV;
+  print LOGFILE "mail sent out\n";
+
+  # send mail reporting the incident
+  my($subject) = "OFFLN $ENV{'domain'} ${date}: $$mail_ref{'subject'}";
+  my($bodyfile) = ".reason";
+  my($maillist) = $$mail_ref{'maillist'};
+
+  # send mail reporting the incident
+  open(BODY, ">${bodyfile}");
+  print BODY "mail from: '$ENV{0} $date $cmdline_args' in '${arg}' option\n";
+  print BODY $$mail_ref{'body'};
+  close(BODY);
+
+  system("/bin/mailx -s \"${subject}\" ${maillist} < ${bodyfile} >> /dev/null 2>> /dev/null");
+
+  # exit out of the calling routine level
+  return(0);
+}
+
+#*SUBTTL doargs - run command-line arguments for thread & path control
+#
+# doargs
+#
+# get thread & path control arguments from the command-line, and set up 
+# call the routines.  If any of the subroutines cause a change in the 
+# "USW Daily Ops Report", rerun it (no mail is an option).
+#
+# parameters:
+#   none
+#
+# globals (inherited):
+#  ARGC	- command line arguments
+#
+# globals (defined):
+#   $arg	- command-line argument being processed
+#
+# locals (inherited):
+#   none
+#
+# locals (defined):
+#   %procs	- subroutine references and flags tied to command-line opts
+#                 routine - subroutine to execute for cmd-line opt
+#                 or - flag to indicate that the OpsReport should be run
+#                 mf - flag to indicate that a fork may have been missed
+#
+# mys:
+#   $doopsrpt	- flag.  whether processing involved changes ops report
+#   $silentops	- flag.  whether run of opsrpt should send out mail
+#
+
+sub doargs
+{
+  %procs;
+  my($doopsrpt) = 0;
+  my($noopsrpt) = 0;
+  my($i);
+
+  %procs = (
+    "ALL",        {'routine', \&all,             'or', 1, 'mf', 1},
+    "EXTRACT",    {'routine', \&extract,         'or', 0, 'mf', 0},
+    "DATABASE",   {'routine', \&database,        'or', 1, 'mf', 0},
+    "LGRPT",      {'routine', \&lgrpt,           'or', 1, 'mf', 1},
+    "LGRPT_EX",   {'routine', \&lgrpt_extract,   'or', 0, 'mf', 0},
+    "LGRPT_DB",   {'routine', \&lgrpt_db,        'or', 1, 'mf', 1},
+    "LGRPT_LOGX", {'routine', \&lgrpt_logx,      'or', 0, 'mf', 0},
+    "LGRPT_ARC",  {'routine', \&lgrpt_archive,   'or', 0, 'mf', 0},
+    "CHNREJ",     {'routine', \&chnrej,          'or', 1, 'mf', 1},
+    "QCHECK",     {'routine', \&qcheck,          'or', 1, 'mf', 1},
+    "QCHECK_EX",  {'routine', \&qcheck_extract,  'or', 0, 'mf', 0},
+    "QCHECK_DB",  {'routine', \&qcheck_db,       'or', 1, 'mf', 0},
+    "LGPER",      {'routine', \&lgper,           'or', 1, 'mf', 1},
+    "LGPER_DB",   {'routine', \&lgper_db,        'or', 1, 'mf', 0},
+    "LGPER_ARC",  {'routine', \&lgper_archive,   'or', 0, 'mf', 0},
+    "LOGX",       {'routine', \&lgrpt_logx,      'or', 0, 'mf', 0},
+    "VTALLY",     {'routine', \&lgrpt_vtally,    'or', 1, 'mf', 0},
+    "DTALLY",     {'routine', \&lgrpt_dtally,    'or', 1, 'mf', 0},
+    "MTALLY",     {'routine', \&lgrpt_mtally,    'or', 1, 'mf', 0},
+    "DTALLY2",    {'routine', \&lgrpt_dtally2,   'or', 1, 'mf', 0},
+    "MTALLY2",    {'routine', \&lgrpt_mtally2,   'or', 1, 'mf', 0},
+    "PTALLY",     {'routine', \&lgrpt_ptally,    'or', 1, 'mf', 0},
+    "PTALLYOPT",  {'routine', \&lgrpt_ptallyopt, 'or', 1, 'mf', 0},
+    "P2TALLY",    {'routine', \&lgper_p2tally,   'or', 1, 'mf', 0},
+    "A2OPTALLY",  {'routine', \&lgper_a2optally, 'or', 1, 'mf', 0},
+    "KSFTALLY",   {'routine', \&lgrpt_ksftally,  'or', 1, 'mf', 0},
+    "OPSRPT",     {'routine', \&opsrpt}
+  );
+
+  # print into the logfile, an indicator that this script has started 
+  # and date of run
+  print LOGFILE "\n";
+  for ($i = 0; $i < 79; $i++) {
+    print LOGFILE "&";
+  }
+  print LOGFILE "\n";
+  print LOGFILE "$ENV{0} $date $cmdline_args\n";
+
+  # include modules needed for execution
+  require "$ENV{rbin}/qcheck.pl";
+  require "$ENV{rbin}/lgrpt.pl";
+  require "$ENV{rbin}/lgper.pl";
+
+  # go through all command-line opts
+  while ($arg = shift(@ARGV)) {
+
+    # reset set the depth of processing for each command-line argument
+    $layer = 0;
+    
+    # Ops Report ( do / don't do / do but don't mail ) kludge
+    if ("NOOPS" eq $arg) {
+      $noopsrpt = 1;
+      next;
+    }
+    elsif ("SILENTOPS" eq $arg) {
+      $ENV{'silentopsrpt'} = 1;
+      next;
+    }
+  
+    # run the subroutine
+    $rv = &{$procs{$arg}{"routine"}}();
+
+    # if anything fails, don't run the opsrpt
+    if ($rv) {
+      $noopsrpt = 1;
+    }
+
+    # if anything requires running the opsrpt, set a flag
+    # (but only if that thing exited successfully)
+    if (!$rtn_val && $procs{$arg}{'or'}) {
+      $doopsrpt = 1;
+    }
+  }
+
+  # if anything needed the opsrpt run, run it
+  if ($doopsrpt && !$noopsrpt) {
+    &opsrpt;
+  }
+}
+
+sub opsrpt
+{
+  LOGENTER("OPSRPT");
+  print(LOGFILE "start of OPS REPORT for ${date}: ", `date`);
+  if ($rtn_val = system("opsrpt.sh ${date} >> ${logfile} 2>> $logfile")) {
+    error_out($E_OPSRPT, $rtn_val);
+    return($rtn_val);
+  }
+  LOGEXIT("OPSRPT");
+
+  return(0);
+}
+
+#*SUBTTL offln_daily - get commandline args, date, and run processes
+#
+# offln_daily
+#
+# get date from the command-line and set up the file names.  Open the
+# logfiles in preparation of execution.  Process any other command-line 
+# arguments that determine the processing path.
+#
+# parameters:
+#   none
+#
+# globals (inherited):
+#  none
+#
+# globals (defined):
+#  date	- date string (mm/dd/yy) for period of execution
+#
+# locals (inherited):
+#   none
+#
+# locals (defined):
+#   rtn_val	- return value to main; modifiable by all sub's called
+#
+# mys:
+#   none
+#
+
+sub offln_daily 
+{
+
+  #scope definitions
+  local($rtn_val);
+  my($exitclean) = "$$.unclean";
+  local($cmdline_args);
+
+  # change directories to the execution directory
+  chdir ${rundir};
+
+  # set up flag in case of unclean exit
+  system("touch ${exitclean}");
+
+  # open log files
+  open(LOGFILE, ">>$logfile") || print STDERR "couldn't open logfile: $logfile";
+
+  # set program to flush the buffer 
+  select((select(LOGFILE), $| = 1)[0]);
+
+  # get number of command-line arguments
+  if ($argc = @ARGV) {
+
+    # test the first argument to see if it's a date
+    $temp = shift(@ARGV);
+    $argc--;
+    if ( $temp =~ m{\d\d/\d\d/\d\d} ) {
+
+      #it's a date. use it.
+      $date = $temp;
+    }
+    else {
+
+      # it's not a date. put it back, and use GETYDATE
+      unshift(@ARGV, $temp); 
+      $argc++;
+      $date = `getydate -s`; 
+    }
+  
+  }
+  else {
+    $date = `getydate -s`; 
+  }
+
+  # if no command line arguments were given (aside from the date),
+  # do all the threads
+  if (0 == $argc) {
+    push(@ARGV, "ALL");
+    $argc++;
+  }
+
+  # make a record of the command-line arguments
+  $cmdline_args = join(" ", @ARGV);
+
+  # remove any newline chars from date strings
+  chomp($date);
+
+  #command-line argument processor (the part that does the "real" stuff)
+  doargs;
+
+  $DBUG && print DJUNK "Exit value $rtn_val\n";
+
+  # take down the flag we're about to exit cleanly
+  system("rm -f ${exitclean}");
+  exit($rtn_val);
+}
+
+#*SUBTTL main - set up some variables necessary for internal execution
+#
+# main
+#
+# set global variables for the script
+#
+# parameters:
+#   none
+#
+# globals (inherited):
+#  none
+#
+# globals (defined):
+#   $localhost		- host name of machine script is to run on
+#   $rundir		- directory on $localhost script runs in
+#   $logfile		- the output log for the script
+#   $runfile		- output file for the script
+#   $database_a		- database name for primary reports
+#   $database_b		- database name for secondary reports
+#   $remotehost		- host name of machine, where log files reside
+#   $remotelogin	- login on $remotehost used to RCP files via
+#
+# locals (inherited/defined):
+#   none
+#
+# mys:
+#   none
+#
+
+{
+  my($rtn_val);
+
+  # execution location & logs
+  #
+  $localhost = $ENV{localhost};
+  $rundir = $ENV{rundir};
+  $rbin = $ENV{rbin};
+  $bin = $ENV{bin};
+  $logfile = $ENV{logfile};
+  $runfile = $ENV{runfile};
+
+  # make sure this script was caled with an environment
+  #
+  if (!($logfile)) {
+    print STDERR "\nCritical Environment Variables Not Found\n",
+	  "       TERMINATING.  No work done.\n\n";
+    exit;
+  }
+
+  # execution parameters for reports
+  #
+  $database_a = $ENV{database_a};
+  $database_b = $ENV{database_b};
+  
+  # production name & file locations
+  #
+  $remotehost = $ENV{remotehost};
+  $remotelogin = $ENV{remotelogin};
+  
+  # run the script 
+  #
+  offln_daily;
+}
+
+$E_OPSRPT = {
+  'subject', "OPSRPT failed", 
+  'rs_here', "OPSRPT", 
+  'mf', "", 
+  'rs_higher_f', 0, 
+  'rs_higher', "", 
+'body', 
+"opsrpt.sh failed.
+
+Check the ${logfile} and/or $arcdir_logxerr/ to see what the problem was.  
+If the trouble persists, inform someone in the morning.
+
+To restart:
+  o restart with the command 'nohup $ENV{0} $date %s &'
+"};
+
+$E_ARCCP = {
+  'subject', "COPY failed", 
+  'rs_here', "???", 
+  'mf', "", 
+  'rs_higher_f', 0, 
+  'rs_higher', "", 
+'body', 
+"a copy command failed in one of the archive processes
+
+Check the ${logfile} to see what the problem was.  Make sure no file systems
+are full.
+If the trouble persists, inform someone in the morning.
+
+To restart:
+  %s Don't know how to restart.  look for other mail.
+"};
